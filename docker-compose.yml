@@ -4,9 +4,9 @@ services:
     image: postgis/postgis:15-3.3 # Postgres + PostGIS for spatial queries (driver GPS)
     container_name: foodengine_user
     environment:
-      POSTGRES_USER: foodengine_user
-      POSTGRES_PASSWORD: foodengine_secret
-      POSTGRES_DB: foodengine_dev
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
