@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule, ObserveInstrument } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
-import cookieParser from 'cookie-parser'
+import cookieParser from 'cookie-parser';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -9,14 +10,37 @@ async function bootstrap() {
   });
   // this enables to parse the cookie
   app.use(cookieParser());
-
+  
   // enable CORS (Cross-Origin Resource Sharing)
   app.enableCors({
     origin: true, // In production, set to exact frontend domain
     credentials: true, //  Allows browsers to send cookies cross-origin
   });
-
+  
   app.setGlobalPrefix('api/v1'); // set global prefix for the route
+  
+  const config = new DocumentBuilder()
+    .setTitle('FoodEngine API')
+    .setDescription(
+      'Multi-Tenant Real-Time Food Delivery & Logistics Engine API documentation',
+    )
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'jwt',
+        description: 'Enter JWT Access Token',
+        in: 'header',
+      },
+      'JWT-auth', // token reference key used by @ApiBearerAuth()
+    )
+    .build();
+  
+  const document = SwaggerModule.createDocument(app, config)
+  SwaggerModule.setup('api/docs', app, document)
+
 
   app.useGlobalPipes(
     new ValidationPipe({

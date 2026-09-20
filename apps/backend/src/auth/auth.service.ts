@@ -4,11 +4,12 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { RegisterDto } from './dtos/auth.dto.js';
+import { RegisterDto } from './dtos/register.dto.js';
 import { PrismaService } from '@foodengine/database';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { LoginDto } from './dtos/login.dto.js';
 @Injectable()
 export class AuthService {
   constructor(
@@ -79,9 +80,9 @@ export class AuthService {
   }
 
   // login
-  async login(registerDto: RegisterDto) {
+  async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: { email: registerDto.email },
+      where: { email: loginDto.email },
     });
 
     if (!user) {
@@ -89,7 +90,7 @@ export class AuthService {
     }
 
     const isPasswordValid = await bcrypt.compare(
-      registerDto.password,
+      loginDto.password,
       user.passwordHash,
     );
 
@@ -131,24 +132,34 @@ export class AuthService {
       include: { user: true },
     });
 
-      if (tokenRecord?.isRevoked) {
-          await this.prisma.refreshToken.updateMany({
-              where: {family: tokenRecord.family},
-              data: {isRevoked: true}
-          })
-          throw new UnauthorizedException('Security alert: Session compromised. Please login')
-      }
+    // while refreshing or token rotation if isRevoked is already set to true means it is already revoked, then update all the family by setting isRevoked === true. 
+    if (tokenRecord?.isRevoked) {
+      await this.prisma.refreshToken.updateMany({
+        where: { family: tokenRecord.family },
+        data: { isRevoked: true },
+      });
+      throw new UnauthorizedException(
+        'Security alert: Session compromised. Please login',
+      );
+    }
 
-     const hasExpired = tokenRecord?.expiresAt ?? undefined
+    const hasExpired = tokenRecord?.expiresAt ?? undefined;
 
-      if (new Date() > hasExpired! ) {
-          throw new UnauthorizedException('Refresh token has expired')
-      }
-      await this.prisma.refreshToken.update({
-          where: { id: tokenRecord!.id },
-          data: {isRevoked: true}
-      })
-      
-      return this.generateTokens(tokenRecord?.userId!, tokenRecord?.user.email!, tokenRecord?.family!)
+    if (new Date() > hasExpired!) {
+      throw new UnauthorizedException('Refresh token has expired');
+    }
+
+    // while refreshing or token rotation update the refresh token by setting isRevoked to true, 
+    await this.prisma.refreshToken.update({
+      where: { id: tokenRecord!.id },
+      data: { isRevoked: true },
+    });
+
+    // after setting the isRevoked to true, generate the new tokens for same family.
+    return this.generateTokens(
+      tokenRecord?.userId!,
+      tokenRecord?.user.email!,
+      tokenRecord?.family!,
+    );
   }
-} 
+}
