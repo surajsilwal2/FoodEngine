@@ -1,11 +1,10 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { RegisterDto } from './dtos/register.dto.js';
-import { PrismaService } from '@foodengine/database';
+import { PrismaService, UserRole } from '@foodengine/database';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
@@ -23,8 +22,8 @@ export class AuthService {
   }
 
   // generates accesstoken using jwtservice and refreshtoken
-  private async generateTokens(userId: number, email: string, family: string) {
-    const payload = { sub: userId, email };
+  private async generateTokens(userId: number, email: string, role:UserRole,  family: string) {
+    const payload = { sub: userId, email, role };
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_ACCESS_SECRET,
       expiresIn: '15m',
@@ -70,11 +69,12 @@ export class AuthService {
         name: true,
         email: true,
         createdAt: true,
+        userRole: true
       },
     });
 
     const family = crypto.randomUUID();
-    const tokens = await this.generateTokens(user.id, user.email, family);
+    const tokens = await this.generateTokens(user.id, user.email,user.userRole, family );
 
     return { user, tokens };
   }
@@ -98,7 +98,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid emaill or password');
 
     const family = crypto.randomUUID();
-    const tokens = await this.generateTokens(user.id, user.email, family);
+    const tokens = await this.generateTokens(user.id, user.email, user.userRole, family);
 
     return {
       user: { id: user.id, email: user.email, name: user.name },
@@ -159,7 +159,8 @@ export class AuthService {
     return this.generateTokens(
       tokenRecord?.userId!,
       tokenRecord?.user.email!,
-      tokenRecord?.family!,
+      tokenRecord?.user.userRole!,
+      tokenRecord?.family!
     );
   }
 }
