@@ -39,7 +39,20 @@ async function bootstrap() {
     .build();
   
   const document = SwaggerModule.createDocument(app, config)
-  SwaggerModule.setup('api/docs', app, document)
+  SwaggerModule.setup('api-docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha'
+    },
+    customSiteTitle: 'API Documentation',
+    customCss: `
+     .swagger-ui .topbar {display:none}
+     .swagger-ui .info {margin:50px, 0}
+     .swagger-ui .info .title {color: #4A90E2}
+    `
+  })
+
 
 
   app.useGlobalPipes(
