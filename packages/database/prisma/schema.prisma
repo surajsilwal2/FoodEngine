@@ -31,22 +31,32 @@ enum DeliveryStatus {
   CANCELLED
 }
 
-// ==========================================
-// IDENTITY & ACCESS LAYER
-// ==========================================
-
 model User {
-  id             Int             @id @default(autoincrement())
-  name           String
-  email          String          @unique
-  passwordHash   String 
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  userRole      UserRole       @default(CUSTOMER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+
   // Relations
   tenantMemberships TenantMember[]
   driverProfile     DriverProfile? // 1:1 relationship
   orders            Order[]
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  family    String
+  expiresAt DateTime
+  isRevoked Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
 }
 
 model TenantMember {
@@ -55,17 +65,17 @@ model TenantMember {
   tenantId Int
   role     UserRole // The role of the user SPECIFICALLY for this tenant
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId]) // A user can only be a member of a tenant once
 }
 
 model Tenant {
-  id          Int          @id @default(autoincrement())
-  name        String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   members     TenantMember[]
@@ -73,37 +83,33 @@ model Tenant {
   orders      Order[] // Explicit relation for fast tenant-scoped queries
 }
 
-// ==========================================
-// COMMERCIAL & KITCHEN LAYER
-// ==========================================
-
 model Restaurant {
-  id          Int      @id @default(autoincrement())
-  tenantId    Int      // Explicit Tenant Isolation Key
+  id          Int       @id @default(autoincrement())
+  tenantId    Int // Explicit Tenant Isolation Key
   name        String
   location    String
   description String
-  isOpen      Boolean  @default(true) // Operational state
+  isOpen      Boolean   @default(true) // Operational state
   deletedAt   DateTime? // Soft delete
 
-  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  menuItems   MenuItem[]
-  orders      Order[]
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  menuItems MenuItem[]
+  orders    Order[]
 
   @@index([tenantId]) // Fast lookup for "Get all restaurants for Tenant X"
 }
 
 model MenuItem {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   restaurantId Int
-  tenantId     Int      // Explicit Tenant Isolation Key
+  tenantId     Int // Explicit Tenant Isolation Key
   name         String
-  price        Decimal  @db.Decimal(10, 2) // Always use Decimal for currency
-  isAvailable  Boolean  @default(true)
+  price        Decimal   @db.Decimal(10, 2) // Always use Decimal for currency
+  isAvailable  Boolean   @default(true)
   deletedAt    DateTime?
 
-  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  orderItems   OrderItem[]
+  restaurant Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  orderItems OrderItem[]
 
   @@index([tenantId])
   @@index([restaurantId])
@@ -111,7 +117,7 @@ model MenuItem {
 
 model Order {
   id           Int         @id @default(autoincrement())
-  tenantId     Int         // Explicit Tenant Isolation Key
+  tenantId     Int // Explicit Tenant Isolation Key
   customerId   Int
   restaurantId Int
   total        Decimal     @db.Decimal(10, 2)
@@ -120,11 +126,11 @@ model Order {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  customer     User        @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  items        OrderItem[]
-  delivery     Delivery?   // 1:1 with Delivery
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  customer   User        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  restaurant Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  items      OrderItem[]
+  delivery   Delivery? // 1:1 with Delivery
 
   @@index([tenantId])
   @@index([customerId])
@@ -132,20 +138,16 @@ model Order {
 }
 
 model OrderItem {
-  id           Int      @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   orderId      Int
   menuItemId   Int
-  snapshotName String   // Preserves name if MenuItem is renamed later
+  snapshotName String // Preserves name if MenuItem is renamed later
   quantity     Int
-  unitPrice    Decimal  @db.Decimal(10, 2)
+  unitPrice    Decimal @db.Decimal(10, 2)
 
-  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItem     MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
 }
-
-// ==========================================
-// LOGISTICS & DISPATCH LAYER
-// ==========================================
 
 model DriverProfile {
   id          Int      @id @default(autoincrement())
@@ -156,20 +158,20 @@ model DriverProfile {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deliveries  Delivery[] // A driver has a history of many deliveries
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries Delivery[] // A driver has a history of many deliveries
 }
 
 model Delivery {
   id              Int            @id @default(autoincrement())
   orderId         Int            @unique // 1:1 with Order
-  driverProfileId Int?           // NULLABLE: No driver when status is SEARCHING
+  driverProfileId Int? // NULLABLE: No driver when status is SEARCHING
   status          DeliveryStatus @default(SEARCHING)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  order           Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  driver          DriverProfile? @relation(fields: [driverProfileId], references: [id], onDelete: Restrict)
+  order  Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  driver DriverProfile? @relation(fields: [driverProfileId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
 }

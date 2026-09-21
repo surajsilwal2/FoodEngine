@@ -4,10 +4,8 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from '@foodengine/database';
-import { RestaurantService } from './restaurant/restaurant.service.js';
-import { RestaurantController } from './restaurant/restaurant.controller.js';
 import { RestaurantModule } from './restaurant/restaurant.module.js';
-
+import { AuthModule } from './auth/auth.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -24,9 +22,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       serviceId: 'backend',
     }),
     RestaurantModule,
+    AuthModule,
   ],
-  controllers: [AppController, RestaurantController],
-  providers: [AppService, RestaurantService],
+  controllers: [AppController, ],
+  providers: [AppService, ],
 })
   
 export class AppModule {}
