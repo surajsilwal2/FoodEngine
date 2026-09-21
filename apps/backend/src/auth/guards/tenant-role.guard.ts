@@ -7,7 +7,6 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Observable } from 'rxjs';
 import { ROLES_KEY } from '../decorators/role.decorator.js';
 
 @Injectable()
@@ -30,13 +29,15 @@ export class TenantRoleGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user; // injected by authguardservice
     if (!user || !user.userId) {
-      throw new ForbiddenException('User context missing');
+      throw new ForbiddenException('User is missing');
     }
 
     if (user.role === UserRole.SYSTEM_ADMIN) return true;
 
-    // extract tenantId from body, params, or headers
+    // Resource-specific guards may resolve a trusted tenant from the target
+    // resource. Fall back to client-provided context for routes that need it.
     const tenantIdRaw =
+      request.tenantId ||
       request.body?.tenantId ||
       request.params?.tenantId ||
       request.headers['x-tenant-id'];
