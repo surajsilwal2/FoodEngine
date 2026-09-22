@@ -66,9 +66,9 @@ model TenantMember {
   tenantId  Int
   role      UserRole // The role of the user SPECIFICALLY for this tenant
   createdAt DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId]) // A user can only be a member of a tenant once
 }
@@ -95,10 +95,10 @@ model Restaurant {
   deletedAt   DateTime? // Soft delete
   createdAt   DateTime  @default(now())
 
-
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  menuItems MenuItem[]
-  orders    Order[]
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  categories MenuCategory[]
+  menuItems  MenuItem[]
+  orders     Order[]
 
   @@index([tenantId]) // Fast lookup for "Get all restaurants for Tenant X"
 }
@@ -109,13 +109,33 @@ model MenuItem {
   tenantId     Int // Explicit Tenant Isolation Key
   name         String
   price        Decimal   @db.Decimal(10, 2) // Always use Decimal for currency
+  description String?
   isAvailable  Boolean   @default(true)
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  restaurant Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  orderItems OrderItem[]
+  restaurant     Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  orderItems     OrderItem[]
+  menuCategory   MenuCategory? @relation(fields: [menuCategoryId], references: [id])
+  menuCategoryId Int?
+
+  @@index([tenantId])
+  @@index([restaurantId])
+  @@index([menuCategoryId])
+}
+
+model MenuCategory {
+  id           Int         @id @default(autoincrement())
+  tenantId     Int // explicit tenant isloation key
+  name         String
+  displayOrder Int         @default(0)
+  deletedAt    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  menuItems    MenuItem[]
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
+  restaurantId Int?
 
   @@index([tenantId])
   @@index([restaurantId])

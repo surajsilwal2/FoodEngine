@@ -7,6 +7,7 @@ import { DatabaseModule } from '@foodengine/database';
 import { RestaurantModule } from './restaurant/restaurant.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { TenantModule } from './tenant/tenant.module.js';
+import { MenuModule } from './menu/menu.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -25,6 +26,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     RestaurantModule,
     AuthModule,
     TenantModule,
+    MenuModule,
   ],
   controllers: [AppController, ],
   providers: [AppService, ],
