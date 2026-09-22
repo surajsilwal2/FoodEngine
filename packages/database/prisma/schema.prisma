@@ -109,7 +109,7 @@ model MenuItem {
   tenantId     Int // Explicit Tenant Isolation Key
   name         String
   price        Decimal   @db.Decimal(10, 2) // Always use Decimal for currency
-  description String?
+  description  String?
   isAvailable  Boolean   @default(true)
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
@@ -117,7 +117,7 @@ model MenuItem {
 
   restaurant     Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
   orderItems     OrderItem[]
-  menuCategory   MenuCategory? @relation(fields: [menuCategoryId], references: [id])
+  menuCategory   MenuCategory? @relation(fields: [menuCategoryId], references: [id], onDelete: SetNull)
   menuCategoryId Int?
 
   @@index([tenantId])
@@ -134,7 +134,7 @@ model MenuCategory {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   menuItems    MenuItem[]
-  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
   restaurantId Int?
 
   @@index([tenantId])
@@ -176,13 +176,16 @@ model OrderItem {
 }
 
 model DriverProfile {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @unique // 1:1 with User
-  isOnline    Boolean  @default(false) // Real-time availability state
-  currentLat  Float
-  currentLong Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique // 1:1 with User
+  licenseNumber  String
+  vehicleDetails String
+  isApproved     Boolean
+  isOnline       Boolean  @default(false) // Real-time availability state
+  currentLat     Float?
+  currentLong    Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   deliveries Delivery[] // A driver has a history of many deliveries

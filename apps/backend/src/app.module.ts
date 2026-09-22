@@ -8,6 +8,7 @@ import { RestaurantModule } from './restaurant/restaurant.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { TenantModule } from './tenant/tenant.module.js';
 import { MenuModule } from './menu/menu.module.js';
+import { DriverModule } from './driver/driver.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -27,6 +28,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AuthModule,
     TenantModule,
     MenuModule,
+    DriverModule,
   ],
   controllers: [AppController, ],
   providers: [AppService, ],
