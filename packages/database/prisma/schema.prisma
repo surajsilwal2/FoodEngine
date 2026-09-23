@@ -22,6 +22,19 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  MOCK_CARD
+  CASH_ON_DELIVERY
+  MOCK_WALLET
+}
+
 enum DeliveryStatus {
   SEARCHING
   ASSIGNED
@@ -83,6 +96,7 @@ model Tenant {
   members     TenantMember[]
   restaurants Restaurant[]
   orders      Order[] // Explicit relation for fast tenant-scoped queries
+  payments    Payment[]
 }
 
 model Restaurant {
@@ -157,10 +171,29 @@ model Order {
   restaurant Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
   items      OrderItem[]
   delivery   Delivery? // 1:1 with Delivery
+  payment    Payment?
 
   @@index([tenantId])
   @@index([customerId])
   @@index([restaurantId])
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  tenant        Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  tenantId      Int
+  amount        Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus @default(PENDING)
+  provider      PaymentMethod @default(MOCK_CARD)
+  transactionId String        @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  orders  Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  orderId Int   @unique
+
+  @@index([tenantId])
+  @@index([orderId])
 }
 
 model OrderItem {

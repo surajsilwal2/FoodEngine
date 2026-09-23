@@ -11,7 +11,6 @@ import {
   PrismaService,
   UserRole,
 } from '@foodengine/database';
-import { snapshot } from 'node:test';
 import { UpdateOrderDto } from './dto/update-order.dto.js';
 
 @Injectable()
@@ -19,10 +18,13 @@ export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createOrder(customerId: number, dto: CreateOrderDto) {
+    // An order without line items cannot be priced or fulfilled.
     if (!dto.items || dto.items.length === 0)
       throw new BadRequestException('An order must contain at least one item');
 
     return this.prisma.$transaction(async (tx) => {
+      // Fetch items from the requested restaurant and tenant. Prices and names
+      // are read from the database rather than accepted from the client.
       const menuItemIds = dto.items.map((i) => i.menuItemId);
       const dbMenuItems = await tx.menuItem.findMany({
         where: {
@@ -38,6 +40,7 @@ export class OrderService {
           'One or more items are invalid or unavailable for this restaurant',
         );
 
+      // Store snapshots so later menu edits do not change historical orders.
       let calculateTotal = new Prisma.Decimal(0);
       const orderItemSnapshots = [];
 
@@ -60,6 +63,7 @@ export class OrderService {
           quantity: itemDto.quantity,
         });
       }
+      // Persist the order and its item snapshots in the same transaction.
       const order = await tx.order.create({
         data: {
           restaurantId: dto.restaurantId,
@@ -85,6 +89,7 @@ export class OrderService {
     userId: number,
     userGolbalRole: UserRole,
   ) {
+    // Load all display data first, then apply ownership or tenant membership.
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -115,6 +120,7 @@ export class OrderService {
   }
 
   async getCustomerOrders(customerId: number) {
+    // Customers see only their own non-deleted order history.
     return this.prisma.order.findMany({
       where: { customerId, deletedAt: null },
       include: {
@@ -126,6 +132,7 @@ export class OrderService {
   }
 
   async getRestaurantOrders(restaurantId: number) {
+    // Authorization is performed by the controller guards using restaurantId.
     return this.prisma.order.findMany({
       where: { restaurantId, deletedAt: null },
       include: { items: true, customer: { select: { id: true, name: true } } },
@@ -136,11 +143,14 @@ export class OrderService {
   async updateOrderStatus(orderId: number, dto: UpdateOrderDto) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId, deletedAt: null },
+      include: { payment: true },
     });
     if (!order || order.deletedAt) {
       throw new NotFoundException(`Order #${orderId} not found`);
     }
 
+    // This map makes the allowed order lifecycle explicit and rejects skipped
+    // or reversed states (for example, PENDING directly to READY_FOR_PICKUP).
     const validTransition: Record<OrderStatus, OrderStatus[]> = {
       [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
@@ -153,14 +163,27 @@ export class OrderService {
     };
 
     if (!validTransition[order.status].includes(dto.newStatus)) {
-       throw new BadRequestException(
-         `Invalid state transition from ${order.status} to ${dto.newStatus}`,
-       );
+      throw new BadRequestException(
+        `Invalid state transition from ${order.status} to ${dto.newStatus}`,
+      );
     }
 
-    return this.prisma.order.update({
-      where: {id:orderId},
-      data: {status: dto.newStatus}
-    })
+    return this.prisma.$transaction(async (tx) => {
+      // order is cancelled but payment has done then update the payment status to refunded
+      if (
+        dto.newStatus === OrderStatus.CANCELLED &&
+        order.payment &&
+        order.payment.status === 'COMPLETED'
+      ) {
+        await tx.payment.update({
+          where: { id: order.payment.id },
+          data: { status: 'REFUNDED' },
+        });
+      }
+      return this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: dto.newStatus },
+      });
+    });
   }
 }
