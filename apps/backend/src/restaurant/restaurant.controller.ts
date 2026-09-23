@@ -57,21 +57,22 @@ export class RestaurantController {
 
   // list single restaurant by id
   @ApiOperation({ summary: 'Get restaurant details by id' })
-  @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.restaurantService.findOne(id);
+  @Get(':restaurantId')
+  async findOne(@Param('restaurantId', ParseIntPipe) restaurantId: number) {
+    return this.restaurantService.findOne(restaurantId);
   }
 
+  
   //update restaurant details
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Update restaurant details' })
   @UseGuards(JwtAuthGuard, RestaurantTenantContextGuard, TenantRoleGuard)
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.SYSTEM_ADMIN)
-  @Patch(':id')
+  @Patch(':restaurantId')
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Body() dto: UpdateRestaurantDto,
   ) {
-    return this.restaurantService.update(id, dto);
+    return this.restaurantService.update(restaurantId, dto);
   }
 }

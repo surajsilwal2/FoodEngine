@@ -16,7 +16,7 @@ export class RestaurantTenantContextGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const restaurantId = Number(request.params?.id);
+    const restaurantId = Number(request.params?.restaurantId);
 
     if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
       throw new NotFoundException('Restaurant not found');
