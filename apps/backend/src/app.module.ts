@@ -10,6 +10,7 @@ import { TenantModule } from './tenant/tenant.module.js';
 import { MenuModule } from './menu/menu.module.js';
 import { DriverModule } from './driver/driver.module.js';
 import { OrderModule } from './order/order.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -31,6 +32,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     MenuModule,
     DriverModule,
     OrderModule,
+    PaymentsModule,
   ],
   controllers: [AppController, ],
   providers: [AppService, ],

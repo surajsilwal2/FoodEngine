@@ -3,10 +3,12 @@ import {
   ExecutionContext,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { UserRole } from '@foodengine/database';
 
 export interface CurrentUserPayload {
   userId: number;
   email: string;
+  role: UserRole;
 }
 export const currentUser = createParamDecorator(
   (data: keyof CurrentUserPayload | undefined, ctx: ExecutionContext) => {

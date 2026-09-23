@@ -5,7 +5,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
 
 @Injectable()
 export class OrderTenantContextGuard implements CanActivate {
@@ -26,9 +25,10 @@ export class OrderTenantContextGuard implements CanActivate {
 
     if (!order) {
       throw new NotFoundException('Order not found');
-      }
-      
-      request.tenantId = order.tenantId
+    }
+
+    // TenantRoleGuard uses this trusted value to check the merchant membership.
+    request.tenantId = order.tenantId;
     return true;
   }
 }

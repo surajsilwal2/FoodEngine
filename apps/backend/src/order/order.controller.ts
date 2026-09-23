@@ -44,6 +44,7 @@ export class OrderController {
     @currentUserDecorator.currentUser()
     user: currentUserDecorator.CurrentUserPayload,
   ) {
+    // The customer identity comes from the verified JWT, not the request body.
     return this.orderService.createOrder(user.userId, dto);
   }
 
@@ -67,7 +68,9 @@ export class OrderController {
     @currentUserDecorator.currentUser()
     user: currentUserDecorator.CurrentUserPayload,
   ) {
-    return this.orderService.getOrderById(id, user.userId, UserRole.CUSTOMER);
+    // Passing the JWT role lets the service authorize customer, merchant, and
+    // system-admin access to the selected order.
+    return this.orderService.getOrderById(id, user.userId, user.role);
   }
 
   @ApiBearerAuth('JWT-auth')
@@ -80,6 +83,8 @@ export class OrderController {
   async getRestaurantOrders(
     @Param('restaurantId', ParseIntPipe) restaurantId: number,
   ) {
+    // RestaurantTenantContextGuard has already resolved a trusted tenant from
+    // restaurantId before TenantRoleGuard checks merchant membership.
     return this.orderService.getRestaurantOrders(restaurantId);
   }
 
