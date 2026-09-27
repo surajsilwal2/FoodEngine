@@ -100,14 +100,16 @@ model Tenant {
 }
 
 model Restaurant {
-  id          Int       @id @default(autoincrement())
-  tenantId    Int // Explicit Tenant Isolation Key
-  name        String
-  location    String
-  description String
-  isOpen      Boolean   @default(true) // Operational state
-  deletedAt   DateTime? // Soft delete
-  createdAt   DateTime  @default(now())
+  id            Int    @id @default(autoincrement())
+  tenantId      Int // Explicit Tenant Isolation Key
+  name          String
+  location      String
+  restaurantLng Float?
+  restaurantLat Float?
+  description   String
+  isOpen        Boolean   @default(true) // Operational state
+  deletedAt     DateTime? // Soft delete
+  createdAt     DateTime  @default(now())
 
   tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   categories MenuCategory[]

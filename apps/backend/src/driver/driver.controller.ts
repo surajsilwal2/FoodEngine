@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { DriverService } from './driver.service.js';
 import { ApplyDriverDto, ApproveDriverDto, AvailableDriverDto, CreateDriverDto } from './dto/create-driver.dto.js';
-import { UpdateDriverDto } from './dto/update-driver.dto.js';
+import { UpdateDriverDto, updateLocationDto } from './dto/update-driver.dto.js';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -94,6 +94,19 @@ export class DriverController {
     @Body() dto: ApproveDriverDto,
   ) {
     return this.driverService.setApprovalStatus(id, dto);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Stream driver GPS location to Redis (Drivers only)',
+  })
+  @UseGuards(JwtAuthGuard)
+  @Patch('location')
+  async updateLocation(
+    @Body() dto: updateLocationDto,
+    @currentUserDecorator.currentUser() user: currentUserDecorator.CurrentUserPayload,
+  ) {
+    return this.driverService.updateLocation(user.userId, dto);
   }
 }
 

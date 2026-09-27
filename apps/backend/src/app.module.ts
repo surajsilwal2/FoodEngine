@@ -11,6 +11,7 @@ import { MenuModule } from './menu/menu.module.js';
 import { DriverModule } from './driver/driver.module.js';
 import { OrderModule } from './order/order.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
+import { RedisModule } from './redis/redis.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -33,6 +34,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     DriverModule,
     OrderModule,
     PaymentsModule,
+    RedisModule,
   ],
   controllers: [AppController, ],
   providers: [AppService, ],
