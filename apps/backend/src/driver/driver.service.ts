@@ -11,10 +11,15 @@ import {
 } from './dto/create-driver.dto.js';
 
 import { PrismaService, UserRole } from '@foodengine/database';
+import { RedisService } from '../redis/redis.service.js';
+import { updateLocationDto } from './dto/update-driver.dto.js';
 
 @Injectable()
 export class DriverService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
+  ) {}
 
   async applyForDrivers(userId: number, dto: ApplyDriverDto) {
     const existingProfile = await this.prisma.driverProfile.findUnique({
@@ -81,12 +86,12 @@ export class DriverService {
       where: { userId },
       data: { isOnline: dto.isOnline },
       include: {
-        user:{
+        user: {
           select: {
-            userRole: true
-          }
-        }
-      }
+            userRole: true,
+          },
+        },
+      },
     });
   }
 
@@ -115,9 +120,11 @@ export class DriverService {
       });
       await tx.user.update({
         where: { id: profile.userId },
-        data: {userRole: dto.isApproved ? UserRole.DRIVER : UserRole.CUSTOMER}
-      })
-      return updateProfile
+        data: {
+          userRole: dto.isApproved ? UserRole.DRIVER : UserRole.CUSTOMER,
+        },
+      });
+      return updateProfile;
     });
   }
 
@@ -135,5 +142,52 @@ export class DriverService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async updateLocation(userId: number, dto: updateLocationDto) {
+    const profile = await this.prisma.driverProfile.findUnique({
+      where: { userId },
+    });
+    if (!profile || !profile.isApproved) {
+      throw new ForbiddenException('Only approved drivers can update location');
+    }
+
+    const redis = this.redisService.getClient();
+
+    await redis.geoadd(
+      'drivers:locations', // it is index name where gps coordinates are saved
+      dto.lng,
+      dto.lat,
+      profile.id.toString(), // it act as identifier
+    );
+    return this.prisma.driverProfile.update({
+      where: {id: profile.id},
+      data: {
+        currentLat: dto.lat,
+        currentLong: dto.lng
+      }
+    })
+  }
+
+  // method to find nearby available drivers within a radius(in km)
+  async findNearbyDrivers(
+    restaurantLat: number,
+    restaurantLng: number,
+    radiusKm: number = 5,
+  ) {
+    const redis = this.redisService.getClient();
+
+    // Redis GEOSEARCH command searches for members within a radius of coordinates
+    const nearbyDriverIds = await redis.geosearch(
+      'drivers:locations',
+      'FROMLONGLAT',
+      restaurantLng,
+      restaurantLat,
+      'BYRADIUS',
+      radiusKm,
+      'km',
+      'ASC', // return nearest drivers first
+    );
+    return nearbyDriverIds // returns array of drivers Ids
   }
 }
