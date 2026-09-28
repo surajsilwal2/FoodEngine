@@ -82,7 +82,7 @@ export class DriverService {
         'Your driver profile is pending verification by system administrators',
       );
     }
-    return this.prisma.driverProfile.update({
+    const updatedProfile = await this.prisma.driverProfile.update({
       where: { userId },
       data: { isOnline: dto.isOnline },
       include: {
@@ -93,6 +93,24 @@ export class DriverService {
         },
       },
     });
+
+    const redis = this.redisService.getClient();
+    if (!dto.isOnline) {
+      // Offline drivers must leave the GEO index; otherwise dispatch can offer
+      // work to a driver who has deliberately stopped accepting deliveries.
+      await redis.zrem('drivers:locations', profile.id.toString());
+    } else if (profile.currentLat !== null && profile.currentLong !== null) {
+      // Re-add the most recently persisted location when a driver comes back
+      // online, so they can be discovered without sending a second GPS update.
+      await redis.geoadd(
+        'drivers:locations',
+        profile.currentLong,
+        profile.currentLat,
+        profile.id.toString(),
+      );
+    }
+
+    return updatedProfile;
   }
 
   async setApprovalStatus(driverProfileId: number, dto: ApproveDriverDto) {
@@ -105,7 +123,7 @@ export class DriverService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedProfile = await this.prisma.$transaction(async (tx) => {
       const updateProfile = await tx.driverProfile.update({
         where: { id: driverProfileId },
         data: {
@@ -126,6 +144,16 @@ export class DriverService {
       });
       return updateProfile;
     });
+
+    if (!dto.isApproved) {
+      // Revoked profiles are no longer eligible even if a previous location
+      // remains in Redis, so remove that GEO member immediately.
+      await this.redisService
+        .getClient()
+        .zrem('drivers:locations', driverProfileId.toString());
+    }
+
+    return updatedProfile;
   }
 
   async listAllDriver() {
@@ -152,32 +180,45 @@ export class DriverService {
       throw new ForbiddenException('Only approved drivers can update location');
     }
 
-    const redis = this.redisService.getClient();
-
-    await redis.geoadd(
-      'drivers:locations', // it is index name where gps coordinates are saved
-      dto.lng,
-      dto.lat,
-      profile.id.toString(), // it act as identifier
-    );
-    return this.prisma.driverProfile.update({
-      where: {id: profile.id},
+    // Postgres is the durable source of the driver's latest position. Update
+    // it before Redis so a failed database write cannot leave a fake location
+    // that dispatch would treat as real.
+    const updatedProfile = await this.prisma.driverProfile.update({
+      where: { id: profile.id },
       data: {
         currentLat: dto.lat,
-        currentLong: dto.lng
-      }
-    })
+        currentLong: dto.lng,
+      },
+    });
+
+    const redis = this.redisService.getClient();
+    if (profile.isOnline) {
+      // This GEO index intentionally contains only online, approved drivers.
+      // Redis GEOADD uses longitude first and profile ID as the stable member.
+      await redis.geoadd('drivers:locations', dto.lng, dto.lat, profile.id.toString());
+    } else {
+      // A location received while offline is retained in Postgres, but never
+      // exposed to dispatch as an available-driver location.
+      await redis.zrem('drivers:locations', profile.id.toString());
+    }
+
+    return updatedProfile;
   }
 
-  // method to find nearby available drivers within a radius(in km)
-  async findNearbyDrivers(
+  async findNearbyAvailableDrivers(
     restaurantLat: number,
     restaurantLng: number,
     radiusKm: number = 5,
   ) {
     const redis = this.redisService.getClient();
 
-    // Redis GEOSEARCH command searches for members within a radius of coordinates
+    if (!Number.isFinite(restaurantLat) || !Number.isFinite(restaurantLng)) {
+      throw new BadRequestException('Restaurant location is required for dispatch');
+    }
+
+    // Redis provides a distance-sorted candidate list efficiently. It is not
+    // the source of truth for availability, so candidates are checked in
+    // Postgres below before any delivery offer is sent.
     const nearbyDriverIds = await redis.geosearch(
       'drivers:locations',
       'FROMLONGLAT',
@@ -188,6 +229,29 @@ export class DriverService {
       'km',
       'ASC', // return nearest drivers first
     );
-    return nearbyDriverIds // returns array of drivers Ids
+    const orderedProfileIds = (nearbyDriverIds as string[])
+      .map((id) => Number.parseInt(id, 10))
+      .filter(Number.isSafeInteger);
+    if (orderedProfileIds.length === 0) return [];
+
+    const availableProfiles = await this.prisma.driverProfile.findMany({
+      where: {
+        id: { in: orderedProfileIds },
+        isApproved: true,
+        isOnline: true,
+        currentLat: { not: null },
+        currentLong: { not: null },
+        // A driver already assigned to an active delivery cannot receive a
+        // second offer. SEARCHING is excluded because it has no driver yet.
+        deliveries: {
+          none: { status: { in: ['ASSIGNED', 'PICKED_UP'] } },
+        },
+      },
+      select: { id: true },
+    });
+    const availableIds = new Set(availableProfiles.map((profile) => profile.id));
+
+    // Preserve Redis's nearest-first ordering after the database filter.
+    return orderedProfileIds.filter((profileId) => availableIds.has(profileId));
   }
 }

@@ -11,17 +11,24 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ProcessPaymentDto } from './dto/process-payment.dto.js';
+import { DispatchGateway } from '../dispatch/dispatch.gateway.js';
+import { DriverService } from '../driver/driver.service.js';
 
 @Injectable()
 export class PaymentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(PaymentsService.name);
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly dispatchGateway: DispatchGateway,
+    private readonly driverService: DriverService,
+  ) {}
 
   async createPayment(customerId: number, dto: ProcessPaymentDto) {
-    // Load the order and its one-to-one payment record before attempting a
-    // charge. The amount always comes from the stored order total.
+    // Load the order and its one-to-one payment record before attempting a charge. The amount always comes from the stored order total.
     const order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
       include: { payment: true },
@@ -55,9 +62,18 @@ export class PaymentsService {
     const mockTxnId = `MOCK_TXN_${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
     const selectedMethod = dto.paymentMethod || PaymentMethod.MOCK_CARD;
 
-    return this.prisma.$transaction(async (tx) => {
-      // Keep payment, order confirmation, and delivery creation atomic. If any
-      // write fails, the transaction rolls back all three changes.
+    const result = await this.prisma.$transaction(async (tx) => {
+      // This conditional update is the payment-state lock. Concurrent callers
+      // cannot both advance the same order from PENDING to CONFIRMED.
+      const orderUpdate = await tx.order.updateMany({
+        where: { id: order.id, status: OrderStatus.PENDING, deletedAt: null },
+        data: { status: OrderStatus.CONFIRMED },
+      });
+      if (orderUpdate.count !== 1) {
+        throw new BadRequestException('Order is no longer awaiting payment');
+      }
+
+      // Keep payment, order confirmation, and delivery creation atomic. If any write fails, the transaction rolls back all three changes.
       const payment = await tx.payment.upsert({
         where: {
           orderId: order.id,
@@ -77,10 +93,6 @@ export class PaymentsService {
         },
       });
       // A successful mock payment makes the restaurant-facing order actionable.
-      const updateOrder = await tx.order.update({
-        where: { id: order.id },
-        data: { status: OrderStatus.CONFIRMED },
-      });
       // Delivery starts unassigned; dispatch can look for SEARCHING deliveries.
       const delivery = await tx.delivery.create({
         data: {
@@ -92,10 +104,47 @@ export class PaymentsService {
         success: true,
         message: 'Payment is successful and order is confirmed',
         payment,
-        orderStatus: updateOrder.status,
-        delivery
+        orderStatus: OrderStatus.CONFIRMED,
+        delivery,
       };
     });
+
+    // Dispatch is outside the transaction: database state must remain committed even when Redis or a socket server is temporarily down.
+    const restaurant = await this.prisma.restaurant.findUnique({
+      where: { id: order?.restaurantId },
+    });
+
+    if (restaurant?.restaurantLat == null || restaurant.restaurantLng == null) {
+      // The delivery remains SEARCHING for a retry/manual assignment;
+      this.logger.warn(`Delivery #${result.delivery.id} was not dispatched: restaurant coordinates are missing`);
+      return result;
+    }
+
+    try {
+      const nearbyDriverProfileIds =
+        await this.driverService.findNearbyAvailableDrivers(
+          restaurant.restaurantLat,
+          restaurant.restaurantLng,
+          5,
+        );
+
+      const closestDriverProfileId = nearbyDriverProfileIds[0];
+      if (closestDriverProfileId !== undefined) {
+        this.dispatchGateway.notifyDriverNewOffer(closestDriverProfileId, {
+          orderId: order.id,
+          deliveryId: result.delivery.id,
+          restaurantName: restaurant.name,
+          totalAmount: order.total,
+          message: 'New delivery request nearby',
+        });
+      }
+    } catch (error) {
+      // Do not report a completed payment as failed solely because its
+      // best-effort real-time notification could not be delivered.
+      this.logger.error(`Delivery #${result.delivery.id} could not be dispatched`, error);
+    }
+
+    return result;
   }
 
   async getPaymentByOrder(orderId: number, userId: number, userRole: UserRole) {
@@ -136,6 +185,5 @@ export class PaymentsService {
     }
 
     return payment;
-    }
-    
+  }
 }
