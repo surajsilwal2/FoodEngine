@@ -12,6 +12,7 @@ import { DriverModule } from './driver/driver.module.js';
 import { OrderModule } from './order/order.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { RedisModule } from './redis/redis.module.js';
+import { DispatchModule } from './dispatch/dispatch.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -35,9 +36,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     OrderModule,
     PaymentsModule,
     RedisModule,
+    DispatchModule
   ],
-  controllers: [AppController, ],
-  providers: [AppService, ],
+  controllers: [AppController],
+  providers: [AppService],
 })
-  
 export class AppModule {}
