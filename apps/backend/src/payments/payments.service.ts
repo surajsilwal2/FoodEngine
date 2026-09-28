@@ -17,6 +17,8 @@ import {
 import { ProcessPaymentDto } from './dto/process-payment.dto.js';
 import { DispatchGateway } from '../dispatch/dispatch.gateway.js';
 import { DriverService } from '../driver/driver.service.js';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class PaymentsService {
@@ -25,6 +27,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly dispatchGateway: DispatchGateway,
     private readonly driverService: DriverService,
+    @InjectQueue('dispatch-queue') private readonly dispatchQueue: Queue,
   ) {}
 
   async createPayment(customerId: number, dto: ProcessPaymentDto) {
@@ -116,33 +119,34 @@ export class PaymentsService {
 
     if (restaurant?.restaurantLat == null || restaurant.restaurantLng == null) {
       // The delivery remains SEARCHING for a retry/manual assignment;
-      this.logger.warn(`Delivery #${result.delivery.id} was not dispatched: restaurant coordinates are missing`);
+      this.logger.warn(
+        `Delivery #${result.delivery.id} was not dispatched: restaurant coordinates are missing`,
+      );
       return result;
     }
 
-    try {
-      const nearbyDriverProfileIds =
-        await this.driverService.findNearbyAvailableDrivers(
-          restaurant.restaurantLat,
-          restaurant.restaurantLng,
-          5,
-        );
+    // enqueue background dispatch retry job
+    // bullmq will attempt the job up to 5 times, waiting for 15sec for each retries
+    await this.dispatchQueue.add(
+      'find-driver',
+      {
+        deliveryId: result.delivery.id,
+        restaurantLat: restaurant.restaurantLat,
+        restaurantLng: restaurant.restaurantLng,
+      },
+      {
+        attempts: 5,
+        backoff: {
+          type: 'fixed',
+          delay: 15000, // wait 15 seconds before retry
+        },
+        removeOnComplete: true, // auto-clean finished job from redis
+      },
+    );
 
-      const closestDriverProfileId = nearbyDriverProfileIds[0];
-      if (closestDriverProfileId !== undefined) {
-        this.dispatchGateway.notifyDriverNewOffer(closestDriverProfileId, {
-          orderId: order.id,
-          deliveryId: result.delivery.id,
-          restaurantName: restaurant.name,
-          totalAmount: order.total,
-          message: 'New delivery request nearby',
-        });
-      }
-    } catch (error) {
-      // Do not report a completed payment as failed solely because its
-      // best-effort real-time notification could not be delivered.
-      this.logger.error(`Delivery #${result.delivery.id} could not be dispatched`, error);
-    }
+    this.logger.log(
+      `Enqueued background dispatch job for Delivery #${result.delivery.id}`,
+    );
 
     return result;
   }
