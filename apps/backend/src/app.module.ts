@@ -13,6 +13,7 @@ import { OrderModule } from './order/order.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { DispatchModule } from './dispatch/dispatch.module.js';
+import { DeliveryModule } from './delivery/delivery.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -36,7 +37,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     OrderModule,
     PaymentsModule,
     RedisModule,
-    DispatchModule
+    DispatchModule,
+    DeliveryModule
   ],
   controllers: [AppController],
   providers: [AppService],
