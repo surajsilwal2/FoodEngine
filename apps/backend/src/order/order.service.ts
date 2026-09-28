@@ -158,7 +158,13 @@ export class OrderService {
         OrderStatus.READY_FOR_PICKUP,
         OrderStatus.CANCELLED,
       ],
-      [OrderStatus.READY_FOR_PICKUP]: [OrderStatus.CANCELLED],
+      // Delivery updates these two states after a driver accepts the order.
+      [OrderStatus.READY_FOR_PICKUP]: [
+        OrderStatus.PICKED_UP,
+        OrderStatus.CANCELLED,
+      ],
+      [OrderStatus.PICKED_UP]: [OrderStatus.DELIVERED],
+      [OrderStatus.DELIVERED]: [],
       [OrderStatus.CANCELLED]: [],
     };
 
