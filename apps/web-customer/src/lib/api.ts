@@ -1,11 +1,23 @@
-import axios from "axios";
+import axios, { type InternalAxiosRequestConfig } from "axios";
 
 // Base API URL pointing to our NestJS backend
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  
+// Nest adds this prefix globally, so every HTTP endpoint is rooted here.
+const API_BASE_URL = `${API_URL.replace(/\/$/, "")}/api/v1`;
+
+interface RefreshResponse {
+  accessToken: string;
+}
+
+type RetriableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
+
+let refreshRequest: Promise<string> | null = null;
 
 export const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -26,14 +38,48 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// api.interceptors.response.use(onSuccess, onError) — takes two callbacks:
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || typeof window !== "undefined") {
-      localStorage.removeItem("accessToken");
+    const originalRequest = error.config as RetriableRequest | undefined;
+    const isAuthEndpoint = ["/auth/login", "/auth/register", "/auth/refresh", "/auth/logout"].some(
+      (path) => originalRequest?.url?.includes(path),
+    );
+
+    if (
+      error.response?.status !== 401 ||
+      !originalRequest ||
+      originalRequest._retry ||
+      isAuthEndpoint ||
+      typeof window === "undefined"
+    ) {
+      return Promise.reject(error);
     }
-    // return Promise.reject(error) — re-throws the error so callers (try/catch or .catch()) can still handle it. If this is missing, the promise would resolve with undefined and break everything.
-    return Promise.reject(error);
+
+    originalRequest._retry = true;
+    if (!refreshRequest) {
+      // Share one refresh call across concurrent 401 responses.
+      refreshRequest = axios
+        .post<RefreshResponse>(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+        .then(({ data }) => {
+          localStorage.setItem("accessToken", data.accessToken);
+          return data.accessToken;
+        })
+        .catch((refreshError: unknown) => {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("user");
+          window.dispatchEvent(new Event("auth:expired")); // Cross-tab sync
+          throw refreshError;
+        })
+        .finally(() => {
+          refreshRequest = null;
+        });
+    }
+
+    return refreshRequest.then((accessToken) => {
+      // Retry the failed API call once with the newly issued access token.
+      originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+      return api(originalRequest);
+    });
   },
 );
