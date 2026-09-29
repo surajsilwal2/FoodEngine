@@ -16,7 +16,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // conver the raw refresh token into hash token
+  // convert the raw refresh token into hash token
   private hashToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
@@ -132,6 +132,11 @@ export class AuthService {
       include: { user: true },
     });
 
+    // Reject unknown tokens before checking revocation or expiry fields.
+    if (!tokenRecord) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
     // while refreshing or token rotation if isRevoked is already set to true means it is already revoked, then update all the family by setting isRevoked === true. 
     if (tokenRecord?.isRevoked) {
       await this.prisma.refreshToken.updateMany({
@@ -143,24 +148,22 @@ export class AuthService {
       );
     }
 
-    const hasExpired = tokenRecord?.expiresAt ?? undefined;
-
-    if (new Date() > hasExpired!) {
+    if (new Date() > tokenRecord.expiresAt) {
       throw new UnauthorizedException('Refresh token has expired');
     }
 
     // while refreshing or token rotation update the refresh token by setting isRevoked to true, 
     await this.prisma.refreshToken.update({
-      where: { id: tokenRecord!.id },
+      where: { id: tokenRecord.id },
       data: { isRevoked: true },
     });
 
     // after setting the isRevoked to true, generate the new tokens for same family.
     return this.generateTokens(
-      tokenRecord?.userId!,
-      tokenRecord?.user.email!,
-      tokenRecord?.user.userRole!,
-      tokenRecord?.family!
+      tokenRecord.userId,
+      tokenRecord.user.email,
+      tokenRecord.user.userRole,
+      tokenRecord.family
     );
   }
 }
