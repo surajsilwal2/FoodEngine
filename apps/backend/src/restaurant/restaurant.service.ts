@@ -18,6 +18,13 @@ export class RestaurantService {
     });
   }
 
+  async findActiveRestaurants() {
+    return this.prisma.restaurant.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   // find all restaurant of specific tenant
   async findActiveRestaurantsByTenant(tenantId: number) {
     return await this.prisma.restaurant.findMany({

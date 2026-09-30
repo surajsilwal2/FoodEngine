@@ -29,6 +29,12 @@ import { RestaurantTenantContextGuard } from './guards/restaurant-tenant-context
 export class RestaurantController {
   constructor(private readonly restaurantService: RestaurantService) {}
 
+  @ApiOperation({ summary: 'Get all active restaurants' })
+  @Get()
+  async findAllRestaurants() {
+    return this.restaurantService.findActiveRestaurants();
+  }
+
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Create restaurant (Merchant/System Admin only)' })
   @ApiResponse({ status: 201, description: 'Restaurant created successfully' })

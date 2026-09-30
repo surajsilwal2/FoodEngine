@@ -2,7 +2,7 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 
 // Base API URL pointing to our NestJS backend
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   
 // Nest adds this prefix globally, so every HTTP endpoint is rooted here.
 const API_BASE_URL = `${API_URL.replace(/\/$/, "")}/api/v1`;
