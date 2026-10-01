@@ -23,7 +23,7 @@ export class AuthController {
   private setRefreshTokenCookie(res: express.Response, refreshToken: string) {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true, // cookie cannot be read by browser
-      path: '/auth', // cookie is sent only to auth endpoints
+      path: '/api/v1/auth', // Match the global API prefix so refresh requests include this cookie.
       sameSite: 'lax', // same site request, eg: foodengine.com -> foodengine.com/restaurants and when the user clicks a link from another site to foodengine (e.g. clicking a link in an email that goes to foodengine.com).  The URL bar changes, and the method is GET.
       secure: process.env.NODE_ENV === 'production', // cookie can se sent over https in production, but in dev cookie is sent over http protocol.
       maxAge: 7 * 24 * 60 * 60 * 1000, // max age 7 days in milliseconds
@@ -99,7 +99,7 @@ export class AuthController {
       await this.authService.logout(refreshToken);
     }
 
-    res.clearCookie('refreshToken', { path: '/auth' });
+    res.clearCookie('refreshToken', { path: '/api/v1/auth' });
     return { message: 'Logged out successfully', success: true };
   }
 }

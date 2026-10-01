@@ -68,7 +68,10 @@ api.interceptors.response.use(
         .catch((refreshError: unknown) => {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("user");
-          window.dispatchEvent(new Event("auth:expired")); // Cross-tab sync
+          const returnTo = `${window.location.pathname}${window.location.search}`;
+          window.dispatchEvent(
+            new CustomEvent("auth:expired", { detail: { returnTo } }),
+          );
           throw refreshError;
         })
         .finally(() => {

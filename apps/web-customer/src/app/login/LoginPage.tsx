@@ -26,7 +26,12 @@ const LoginPage = () => {
     try {
       const response = await api.post("/auth/login", { email, password });
       login(response.data.accessToken, response.data.user);
-      router.replace("/restaurants");
+      const nextPath = new URLSearchParams(window.location.search).get("next");
+      const returnPath =
+        nextPath?.startsWith("/") && !nextPath.startsWith("//")
+          ? nextPath
+          : "/restaurants";
+      router.replace(returnPath);
     } catch (err: unknown) {
       setError(
         axios.isAxiosError<{ message?: string }>(err)
