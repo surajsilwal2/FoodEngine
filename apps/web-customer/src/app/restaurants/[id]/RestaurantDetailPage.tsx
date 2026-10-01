@@ -1,11 +1,13 @@
 "use client";
 
 import { useRestaurantMenu } from "@/hooks/useCatalog";
+import { useCart } from "@/context/CartContext";
 import Link from "next/link";
-import { ArrowLeft, Check, Plus, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, Check, Plus, ShoppingBag, UtensilsCrossed } from "lucide-react";
 
 export default function RestaurantDetailPage({ id }: { id: string }) {
   const restaurantId = Number(id);
+  const { addItem, totalItems } = useCart();
   const {
     data: categories,
     isLoading,
@@ -26,6 +28,20 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
           >
             <ArrowLeft className="size-4" /> All restaurants
           </Link>
+          <div className="float-right flex items-center gap-4">
+            <Link
+              href="/orders"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white transition hover:text-amber-200"
+            >
+              Your orders
+            </Link>
+            <Link
+              href="/cart"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white transition hover:text-amber-200"
+            >
+              <ShoppingBag className="size-4" /> Cart ({totalItems})
+            </Link>
+          </div>
           <div className="mt-12 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
             <div>
               <span className="inline-flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-amber-300">
@@ -103,6 +119,8 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
                         </p>
                       </div>
                       <button
+                        type="button"
+                        onClick={() => addItem(item)}
                         disabled={!item.isAvailable}
                         title={
                           item.isAvailable
