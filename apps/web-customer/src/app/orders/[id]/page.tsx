@@ -1,9 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
-import { Order } from "@/types/orders";
-import { useQuery } from "@tanstack/react-query";
+import { useOrderDetail } from "@/hooks/useCustomerOrders";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -12,15 +10,11 @@ const OrderDetailPage = () => {
   const params = useParams<{ id: string }>();
   const orderId = Number(params.id);
   const { isAuthenticated } = useAuth();
-  const {
-    data: order,
-    isLoading,
-    isError,
-  } = useQuery<Order>({
-    queryKey: ["order", orderId],
-    queryFn: async () => (await api.get(`/order/${orderId}`)).data,
-    enabled: isAuthenticated && Number.isInteger(orderId) && orderId > 0,
-  });
+  
+  const { data: order, isLoading, isError } = useOrderDetail(
+    orderId,
+    isAuthenticated,
+  );
 
   return (
     <main className="min-h-screen bg-stone-50 px-5 py-10 text-zinc-900 sm:px-8">

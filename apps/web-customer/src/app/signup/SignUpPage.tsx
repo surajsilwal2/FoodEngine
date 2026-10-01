@@ -3,10 +3,8 @@
 import axios from "axios";
 import { LockKeyhole, Mail, UserRound } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
+import { useRegister } from "@/hooks/useCustomerAuth";
 import { Alert, AuthShell, Input, SubmitButton } from "../login/LoginPage";
 
 const inputStyle =
@@ -17,21 +15,13 @@ const SignUpPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
-  const router = useRouter();
+  const registerMutation = useRegister();
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    setIsLoading(true);
+
     try {
-      const response = await api.post("/auth/register", {
-        name,
-        email,
-        password,
-      });
-      login(response.data.accessToken, response.data.user);
-      router.replace("/restaurants");
+      await registerMutation.mutateAsync({ name, email, password });
     } catch (err: unknown) {
       const message = axios.isAxiosError<{ message?: string | string[] }>(err)
         ? err.response?.data?.message
@@ -41,8 +31,6 @@ const SignUpPage = () => {
           ? message[0]
           : (message ?? "Could not create your account. Please try again."),
       );
-    } finally {
-      setIsLoading(false);
     }
   };
   return (
@@ -60,7 +48,7 @@ const SignUpPage = () => {
             minLength={2}
             maxLength={30}
             required
-            disabled={isLoading}
+            disabled={registerMutation.isPending}
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Your name"
@@ -72,7 +60,7 @@ const SignUpPage = () => {
             type="email"
             autoComplete="email"
             required
-            disabled={isLoading}
+            disabled={registerMutation.isPending}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
@@ -84,13 +72,16 @@ const SignUpPage = () => {
             type="password"
             autoComplete="new-password"
             required
-            disabled={isLoading}
+            disabled={registerMutation.isPending}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className={inputStyle}
           />
         </Input>
-        <SubmitButton loading={isLoading} loadingLabel="Creating account...">
+        <SubmitButton
+          loading={registerMutation.isPending}
+          loadingLabel="Creating account..."
+        >
           Create account
         </SubmitButton>
       </form>

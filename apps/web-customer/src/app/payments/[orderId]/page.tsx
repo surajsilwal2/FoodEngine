@@ -1,20 +1,16 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
-import { Order, Payment, PaymentMethod } from "@/types/orders";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useOrderDetail,
+  usePaymentDetail,
+  useProcessPayment,
+} from "@/hooks/useCustomerOrders";
+import { type PaymentMethod } from "@/types/orders";
 import { ArrowLeft, Check, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-
-interface PaymentResult {
-  success: boolean;
-  message: string;
-  payment: Payment;
-  orderStatus: string;
-}
 
 const paymentMethods: { value: PaymentMethod; label: string }[] = [
   { value: "MOCK_CARD", label: "Mock card" },
@@ -26,42 +22,34 @@ const PaymentPage = () => {
   const params = useParams<{ orderId: string }>();
   const orderId = Number(params.orderId);
   const { isAuthenticated } = useAuth();
-  const queryClient = useQueryClient();
 
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>("MOCK_CARD");
 
-  const [result, setResult] = useState<PaymentResult | null>(null);
+  const [result, setResult] = useState<
+    | {
+        success: boolean;
+        message: string;
+        payment: { id: number; amount: string; status: string; provider: PaymentMethod; transactionId: string };
+        orderStatus: string;
+      }
+    | null
+  >(null);
 
-  const {
-    data: order,
-    isLoading,
-    isError,
-  } = useQuery<Order>({
-    queryKey: ["order", orderId],
-    queryFn: async () => (await api.get(`/order/${orderId}`)).data,
-    enabled: isAuthenticated && Number.isInteger(orderId) && orderId > 0,
-  });
-  const { data: existingPayment } = useQuery<Payment>({
-    queryKey: ["payment", orderId],
-    queryFn: async () => (await api.get(`/payments/order/${orderId}`)).data,
-    enabled: isAuthenticated && !!order && order.status !== "PENDING",
-    retry: false,
-  });
-  const processPayment = useMutation({
-    mutationFn: async () =>
-      (
-        await api.post<PaymentResult>("/payments/process", {
-          orderId,
-          paymentMethod,
-        })
-      ).data,
-    onSuccess: (data) => {
-      setResult(data);
-      void queryClient.invalidateQueries({ queryKey: ["order", orderId] });
-      void queryClient.invalidateQueries({ queryKey: ["my-orders"] });
-    },
-  });
+  const { data: order, isLoading, isError } = useOrderDetail(
+    orderId,
+    isAuthenticated,
+  );
+  const { data: existingPayment } = usePaymentDetail(
+    orderId,
+    isAuthenticated && !!order && order.status !== "PENDING",
+  );
+  const processPayment = useProcessPayment(orderId, paymentMethod);
+
+  const onPay = async () => {
+    const data = await processPayment.mutateAsync();
+    setResult(data);
+  };
 
   const payment = result?.payment ?? existingPayment;
   const canPay = order?.status === "PENDING" && !payment;
@@ -171,7 +159,7 @@ const PaymentPage = () => {
                 )}
                 <button
                   type="button"
-                  onClick={() => processPayment.mutate()}
+                  onClick={() => void onPay()}
                   disabled={processPayment.isPending}
                   className="mt-6 w-full bg-emerald-800 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:bg-zinc-400"
                 >
