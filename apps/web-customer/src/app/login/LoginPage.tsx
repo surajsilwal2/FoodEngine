@@ -3,10 +3,8 @@
 import axios from "axios";
 import { ArrowRight, LockKeyhole, Mail } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
+import { useLogin } from "@/hooks/useCustomerAuth";
 
 const inputStyle =
   "w-full rounded-lg border border-zinc-300 bg-white py-2.5 pr-3 pl-10 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-zinc-100";
@@ -15,23 +13,14 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
-  const router = useRouter();
+  const loginMutation = useLogin();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    setIsLoading(true);
+
     try {
-      const response = await api.post("/auth/login", { email, password });
-      login(response.data.accessToken, response.data.user);
-      const nextPath = new URLSearchParams(window.location.search).get("next");
-      const returnPath =
-        nextPath?.startsWith("/") && !nextPath.startsWith("//")
-          ? nextPath
-          : "/restaurants";
-      router.replace(returnPath);
+      await loginMutation.mutateAsync({ email, password });
     } catch (err: unknown) {
       setError(
         axios.isAxiosError<{ message?: string }>(err)
@@ -39,8 +28,6 @@ const LoginPage = () => {
               "Login failed. Please check your credentials.")
           : "Login failed. Please check your credentials.",
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -57,7 +44,7 @@ const LoginPage = () => {
             type="email"
             autoComplete="email"
             required
-            disabled={isLoading}
+            disabled={loginMutation.isPending}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
@@ -69,13 +56,16 @@ const LoginPage = () => {
             type="password"
             autoComplete="current-password"
             required
-            disabled={isLoading}
+            disabled={loginMutation.isPending}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className={inputStyle}
           />
         </Input>
-        <SubmitButton loading={isLoading} loadingLabel="Signing in...">
+        <SubmitButton
+          loading={loginMutation.isPending}
+          loadingLabel="Signing in..."
+        >
           Sign in
         </SubmitButton>
       </form>

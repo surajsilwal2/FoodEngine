@@ -1,27 +1,33 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
-import { Order } from "@/types/orders";
-import { useQuery } from "@tanstack/react-query";
+import { useMyOrders } from "@/hooks/useCustomerOrders";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import Link from "next/link";
 
 const OrdersPage = () => {
   const { isAuthenticated } = useAuth();
-  const {
-    data: orders,
-    isLoading,
-    isError,
-  } = useQuery<Order[]>({
-    queryKey: ["my-orders"],
-    queryFn: async () => (await api.get("/order/my-orders")).data,
-    enabled: isAuthenticated,
-  });
+  const { data: orders, isLoading, isError } = useMyOrders(isAuthenticated);
 
   return (
     <main className="min-h-screen bg-stone-50 px-5 py-10 text-zinc-900 sm:px-8">
       <section className="mx-auto max-w-4xl">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-4">
+          <Link
+            href="/restaurants"
+            className="text-sm font-semibold text-emerald-800 hover:text-emerald-950"
+          >
+            Browse restaurants
+          </Link>
+          <div className="flex items-center gap-4 text-sm font-medium text-zinc-600">
+            <Link href="/" className="hover:text-emerald-800">
+              Home
+            </Link>
+            <Link href="/cart" className="hover:text-emerald-800">
+              Cart
+            </Link>
+          </div>
+        </div>
         <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">
           Account
         </p>

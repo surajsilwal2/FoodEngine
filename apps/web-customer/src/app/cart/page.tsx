@@ -2,8 +2,7 @@
 
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
-import { Order } from "@/types/orders";
+import { useCreateOrder } from "@/hooks/useCustomerOrders";
 import axios from "axios";
 import { ArrowLeft, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -23,17 +22,17 @@ const CartPage = () => {
   } = useCart();
   const { isAuthenticated } = useAuth();
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createOrderMutation = useCreateOrder();
   const [error, setError] = useState("");
 
   const placeOrder = async () => {
     if (!restaurantId || !tenantId || items.length === 0) return;
 
-    setIsSubmitting(true);
     setError("");
+
     try {
-      // The API accepts item IDs and quantities, then recalculates prices from its database.
-      const { data: order } = await api.post<Order>("/order", {
+      // The server recalculates totals and stores a price snapshot, so we only send item IDs and quantities.
+      const order = await createOrderMutation.mutateAsync({
         restaurantId,
         tenantId,
         items: items.map(({ menuItem, quantity }) => ({
@@ -41,8 +40,10 @@ const CartPage = () => {
           quantity,
         })),
       });
-      clearState();
+
+      // Move to the payment page before clearing the cart so the user never gets a brief empty-cart flash during navigation.
       router.push(`/payments/${order.id}`);
+      clearState();
     } catch (requestError: unknown) {
       setError(
         axios.isAxiosError<{ message?: string }>(requestError)
@@ -50,15 +51,15 @@ const CartPage = () => {
               "We could not place this order. Please try again.")
           : "We could not place this order. Please try again.",
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  if (!isHydrated) {
+  if (!isHydrated || createOrderMutation.isPending) {
     return (
       <main className="min-h-screen bg-stone-50 px-5 py-12 text-zinc-900">
-        Loading your cart...
+        {createOrderMutation.isPending
+          ? "Placing your order..."
+          : "Loading your cart..."}
       </main>
     );
   }
@@ -171,10 +172,12 @@ const CartPage = () => {
                 <button
                   type="button"
                   onClick={() => void placeOrder()}
-                  disabled={isSubmitting}
+                  disabled={createOrderMutation.isPending}
                   className="mt-6 w-full bg-emerald-800 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:bg-zinc-400"
                 >
-                  {isSubmitting ? "Placing order..." : "Continue to payment"}
+                  {createOrderMutation.isPending
+                    ? "Placing order..."
+                    : "Continue to payment"}
                 </button>
               ) : (
                 <Link
