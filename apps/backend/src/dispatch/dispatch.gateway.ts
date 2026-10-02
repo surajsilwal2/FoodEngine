@@ -127,7 +127,10 @@ export class DispatchGateway
   // push order status changes to customer(eg- preparation, pickedup)
   notifyOrderStatus(orderId: number, statusData: unknown) {
     const roomName = `order:${orderId}`;
-    this.server.to(roomName).emit('order:status_changed', statusData);
+    this.server.to(roomName).emit('order:status_changed', {
+      ...(typeof statusData === 'object' && statusData !== null ? statusData : {}),
+      orderId,
+    });
     this.logger.log(`Pushed status update to ${roomName}`);
   }
 

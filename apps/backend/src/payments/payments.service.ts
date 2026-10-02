@@ -112,6 +112,10 @@ export class PaymentsService {
       };
     });
 
+    this.dispatchGateway.notifyOrderStatus(order.id, {
+      status: OrderStatus.CONFIRMED,
+    });
+
     // Dispatch is outside the transaction: database state must remain committed even when Redis or a socket server is temporarily down.
     const restaurant = await this.prisma.restaurant.findUnique({
       where: { id: order?.restaurantId },

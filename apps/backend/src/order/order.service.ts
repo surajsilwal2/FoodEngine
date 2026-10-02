@@ -12,10 +12,14 @@ import {
   UserRole,
 } from '@foodengine/database';
 import { UpdateOrderDto } from './dto/update-order.dto.js';
+import { DispatchGateway } from '../dispatch/dispatch.gateway.js';
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly dispatchGateway: DispatchGateway,
+  ) {}
 
   async createOrder(customerId: number, dto: CreateOrderDto) {
     // An order without line items cannot be priced or fulfilled.
@@ -174,7 +178,7 @@ export class OrderService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
       // order is cancelled but payment has done then update the payment status to refunded
       if (
         dto.newStatus === OrderStatus.CANCELLED &&
@@ -186,10 +190,16 @@ export class OrderService {
           data: { status: 'REFUNDED' },
         });
       }
-      return this.prisma.order.update({
+      return tx.order.update({
         where: { id: orderId },
         data: { status: dto.newStatus },
       });
     });
+
+    this.dispatchGateway.notifyOrderStatus(orderId, {
+      status: updatedOrder.status,
+    });
+
+    return updatedOrder;
   }
 }

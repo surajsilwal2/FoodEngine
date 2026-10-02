@@ -1,58 +1,57 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import Link from "next/link";
+import Button from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function Home() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isReady, logout } = useAuth();
 
-  // Keep the root route useful as both the signed-out entry and signed-in landing page.
+  // Wait for the persisted session to be read before deciding which state to
+  // show, so this page never flashes the signed-out copy on first paint.
+  if (!isReady) {
+    return (
+      <main className="flex flex-1 items-center justify-center bg-canvas px-5 py-16">
+        <div className="w-full max-w-2xl">
+          <Skeleton className="h-10 w-3/4" />
+          <Skeleton className="mt-4 h-5 w-full" />
+          <Skeleton className="mt-8 h-11 w-48" />
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 py-16 text-zinc-950">
-      <section className="w-full max-w-2xl border-l-4 border-emerald-700 pl-6 sm:pl-10">
-        <p className="mb-4 text-sm font-semibold uppercase text-emerald-800">
-          FoodEngine
-        </p>
-        <h1 className="text-3xl font-semibold sm:text-4xl">
+    <main className="flex flex-1 items-center justify-center bg-canvas px-5 py-16 sm:px-8">
+      <section className="w-full max-w-2xl">
+        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           {isAuthenticated
-            ? `Welcome, ${user?.name}.`
+            ? `Welcome back, ${user?.name}.`
             : "Good food starts here."}
         </h1>
-        <p className="mt-4 max-w-lg text-base leading-7 text-zinc-600">
+        <p className="mt-4 max-w-lg text-base leading-7 text-ink-muted">
           {isAuthenticated
-            ? "Browse local restaurants, place an order, and keep track of what you have ordered."
-            : "Sign in to continue to your customer account."}
+            ? "Browse local restaurants, place an order, and follow it from the kitchen to your door."
+            : "Sign in to browse restaurants and place your next order."}
         </p>
-        <div className="mt-8">
+        <div className="mt-8 flex flex-wrap gap-3">
           {isAuthenticated ? (
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/restaurants"
-                className="inline-flex bg-emerald-800 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-900"
-              >
-                Browse restaurants
-              </Link>
-              <Link
-                href="/orders"
-                className="inline-flex border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-white"
-              >
+            <>
+              <Button href="/restaurants">Browse restaurants</Button>
+              <Button href="/orders" variant="secondary">
                 Your orders
-              </Link>
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-white"
-              >
+              </Button>
+              <Button onClick={() => void logout()} variant="ghost">
                 Sign out
-              </button>
-            </div>
+              </Button>
+            </>
           ) : (
-            <Link
-              href="/login"
-              className="inline-flex bg-emerald-800 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-900"
-            >
-              Sign in
-            </Link>
+            <>
+              <Button href="/login">Sign in</Button>
+              <Button href="/signup" variant="secondary">
+                Create an account
+              </Button>
+            </>
           )}
         </div>
       </section>

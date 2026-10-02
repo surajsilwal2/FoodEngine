@@ -7,6 +7,7 @@ export interface OrderItem {
 }
 
 export interface Order {
+  deliveryStatus: string;
   id: number;
   restaurantId: number;
   total: string;

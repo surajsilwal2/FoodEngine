@@ -8,6 +8,7 @@ import React, {
   useContext,
   useEffect,
   useEffectEvent,
+  useState,
 } from "react";
 
 interface User {
@@ -23,6 +24,11 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  /**
+   * True once the persisted session has been read from localStorage. Pages can
+   * gate on this so they don't flash their signed-out state on first paint.
+   */
+  isReady: boolean;
 }
 
 interface AuthState {
@@ -53,6 +59,7 @@ export function AuthContextProvider({
   children: React.ReactNode;
 }) {
   const [{ user, token }, dispatch] = useReducer(authReducer, INITIAL_AUTH_STATE);
+  const [isReady, setIsReady] = useState(false);
   const router = useRouter();
 
   // Read persisted browser state after mount to keep server rendering storage-free.
@@ -73,6 +80,10 @@ export function AuthContextProvider({
         localStorage.removeItem("accessToken");
       }
     }
+
+    // FLASH FIX: mark hydration complete (even when there is no session) so
+    // consumers stop rendering their signed-out branch before storage is read.
+    setIsReady(true);
   });
 
   const expireSession = useEffectEvent(() => {
@@ -117,7 +128,7 @@ export function AuthContextProvider({
   };
   return (
     <AuthContext.Provider
-      value={{ user, token, login, logout, isAuthenticated: !!token }}
+      value={{ user, token, login, logout, isAuthenticated: !!token, isReady }}
     >
       {children}
     </AuthContext.Provider>
