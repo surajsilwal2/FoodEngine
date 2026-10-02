@@ -20,6 +20,11 @@ interface CartState {
   items: CartItem[];
   restaurantId: number | null;
   tenantId: number | null;
+  /**
+   * The unpaid order created from this cart, if one exists. Remembering it lets
+   * the cart page resume its payment instead of creating a duplicate order.
+   */
+  pendingOrderId: number | null;
   version: number;
 }
 
@@ -30,6 +35,9 @@ interface CartContextValue extends CartState {
   addItem: (item: MenuItem) => void;
   removeItem: (menuItemId: number) => void;
   updateItem: (menuItemId: number, delta: number) => void;
+  /** Records the order created from the current cart so payment can be resumed. */
+  setPendingOrder: (orderId: number) => void;
+  clearPendingOrder: () => void;
   clearState: () => void;
 }
 
@@ -40,6 +48,7 @@ const EMPTY_STATE: CartState = {
   items: [],
   restaurantId: null,
   tenantId: null,
+  pendingOrderId: null,
   version: SCHEMA_VERSION,
 };
 
@@ -68,6 +77,8 @@ function loadPersistedCart(): CartState | null {
       items: parsed.items,
       restaurantId: parsed.restaurantId ?? null,
       tenantId: parsed.tenantId ?? null,
+      // Optional field, so carts saved before this existed still load.
+      pendingOrderId: parsed.pendingOrderId ?? null,
       version: SCHEMA_VERSION,
     };
   } catch {
@@ -91,15 +102,16 @@ function addItemToCart(state: CartState, item: MenuItem): CartState {
   const isDifferentRestaurant =
     state.restaurantId !== item.restaurantId && state.restaurantId !== null;
 
+  // Pure function: the cross-restaurant confirmation is now asked in addItem
+  // before this runs. Keeping side effects out of here matters because React
+  // may invoke a state updater more than once.
   if (isDifferentRestaurant) {
-    const confirmed = window.confirm(
-      "Your cart contains items from another restaurant. Clear cart and start a new order?",
-    );
-    if (!confirmed) return state;
     return {
       items: [{ menuItem: item, quantity: 1 }],
       restaurantId: item.restaurantId,
       tenantId: item.tenantId,
+      // The cart changed, so any previously created order no longer matches it.
+      pendingOrderId: null,
       version: SCHEMA_VERSION,
     };
   }
@@ -115,6 +127,8 @@ function addItemToCart(state: CartState, item: MenuItem): CartState {
     items: newItems,
     restaurantId: item.restaurantId,
     tenantId: item.tenantId,
+    // The cart changed, so any previously created order no longer matches it.
+    pendingOrderId: null,
     version: SCHEMA_VERSION,
   };
 }
@@ -139,6 +153,8 @@ function updateQuantityInState(
   return {
     ...state,
     items: nextItems,
+    // Editing the cart invalidates a pending order created from it.
+    pendingOrderId: null,
   };
 }
 
@@ -149,7 +165,7 @@ function removeItemFromState(state: CartState, menuItemId: number): CartState {
     return { ...EMPTY_STATE };
   }
 
-  return { ...state, items: nextItems };
+  return { ...state, items: nextItems, pendingOrderId: null };
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -168,20 +184,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(restoreTimer);
   }, []);
 
+  // Keep the updater pure. Persisting inside it used to run the localStorage
+  // write on every React double-invocation; persistence now happens in the
+  // effect below instead.
   const applyUpdate = useCallback((updater: (prev: CartState) => CartState) => {
-    setCart((prev) => {
-      const next = updater(prev);
-      if (next === prev) return prev;
-      persistCart(next);
-      return next;
-    });
+    setCart(updater);
   }, []);
+
+  // Persist the cart whenever it actually changes — but never before the stored
+  // cart has been read back, otherwise the first paint would wipe saved items.
+  useEffect(() => {
+    if (!isHydrated) return;
+    persistCart(cart);
+  }, [cart, isHydrated]);
 
   const addItem = useCallback(
     (item: MenuItem) => {
+      // Ask for confirmation OUTSIDE the state updater. Previously the dialog
+      // ran inside it, so React's development double-invocation showed it twice
+      // and made the first "OK" appear to do nothing.
+      const switchingRestaurant =
+        cart.restaurantId !== null && cart.restaurantId !== item.restaurantId;
+
+      if (
+        switchingRestaurant &&
+        !window.confirm(
+          "Your cart contains items from another restaurant. Clear cart and start a new order?",
+        )
+      ) {
+        return;
+      }
+
       applyUpdate((prev) => addItemToCart(prev, item));
     },
-    [applyUpdate],
+    [applyUpdate, cart.restaurantId],
   );
 
   const updateQuantity = useCallback(
@@ -198,6 +234,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = useCallback(() => {
     applyUpdate(() => ({ ...EMPTY_STATE }));
+  }, [applyUpdate]);
+
+  // Remember the order created from the current cart. Stored with the cart, so
+  // it survives a reload and the customer can resume payment later.
+  const setPendingOrder = useCallback(
+    (orderId: number) => {
+      applyUpdate((prev) => ({ ...prev, pendingOrderId: orderId }));
+    },
+    [applyUpdate],
+  );
+
+  const clearPendingOrder = useCallback(() => {
+    applyUpdate((prev) => ({ ...prev, pendingOrderId: null }));
   }, [applyUpdate]);
 
   const totalItems = useMemo(
@@ -223,6 +272,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       addItem,
       removeItem,
       updateItem: updateQuantity,
+      setPendingOrder,
+      clearPendingOrder,
       clearState: clearCart,
     }),
     [
@@ -233,6 +284,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       addItem,
       removeItem,
       updateQuantity,
+      setPendingOrder,
+      clearPendingOrder,
       clearCart,
     ],
   );

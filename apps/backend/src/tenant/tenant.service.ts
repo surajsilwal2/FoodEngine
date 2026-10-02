@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { CreateTenantDto } from './dto/create-tenant.dto.js';
-import { UpdateTenantDto } from './dto/update-tenant.dto.js';
 import { PrismaService, UserRole } from '@foodengine/database';
 
 @Injectable()
@@ -41,17 +40,5 @@ export class TenantService {
       role: member.role,
       joinedAt: member.createdAt,
     }));
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} tenant`;
-  }
-
-  update(id: number, updateTenantDto: UpdateTenantDto) {
-    return `This action updates a #${id} tenant`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} tenant`;
   }
 }

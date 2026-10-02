@@ -5,9 +5,10 @@ import { AuthModule } from '../auth/auth.module.js';
 import { OrderTenantContextGuard } from './guards/order-tenant-context.guard.js';
 import { TenantRoleGuard } from '../auth/guards/tenant-role.guard.js';
 import { RestaurantTenantContextGuard } from '../restaurant/guards/restaurant-tenant-context.guard.js';
+import { DispatchModule } from '../dispatch/dispatch.module.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, DispatchModule],
   controllers: [OrderController],
   providers: [
     OrderService,

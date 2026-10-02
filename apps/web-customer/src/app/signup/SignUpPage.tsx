@@ -5,10 +5,13 @@ import { LockKeyhole, Mail, UserRound } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useRegister } from "@/hooks/useCustomerAuth";
-import { Alert, AuthShell, Input, SubmitButton } from "../login/LoginPage";
-
-const inputStyle =
-  "w-full rounded-lg border border-zinc-300 bg-white py-2.5 pr-3 pl-10 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-zinc-100";
+import Alert from "@/components/ui/Alert";
+import {
+  AuthShell,
+  Input,
+  SubmitButton,
+  inputStyle,
+} from "@/components/auth/AuthShell";
 
 const SignUpPage = () => {
   const [name, setName] = useState("");
@@ -16,6 +19,7 @@ const SignUpPage = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const registerMutation = useRegister();
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
@@ -33,14 +37,14 @@ const SignUpPage = () => {
       );
     }
   };
+
   return (
     <AuthShell
-      eyebrow="Get started"
       title="Create your account"
       description="A few details, then you're ready to find something delicious."
     >
-      <form onSubmit={handleSubmit} className="mt-7 space-y-5">
-        {error && <Alert message={error} />}
+      <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        {error && <Alert>{error}</Alert>}
         <Input label="Full name" icon={<UserRound className="size-4" />}>
           <input
             type="text"
@@ -85,12 +89,9 @@ const SignUpPage = () => {
           Create account
         </SubmitButton>
       </form>
-      <p className="mt-6 text-center text-sm text-zinc-600">
+      <p className="mt-6 text-center text-sm text-ink-muted">
         Already have an account?{" "}
-        <Link
-          href="/login"
-          className="font-semibold text-emerald-800 hover:underline"
-        >
+        <Link href="/login" className="font-semibold text-brand hover:underline">
           Sign in
         </Link>
       </p>

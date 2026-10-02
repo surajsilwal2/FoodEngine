@@ -1,19 +1,59 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Design tokens (Tailwind v4 `@theme`).
+  Every token below generates utilities, e.g. bg-canvas, text-ink, rounded-card,
+  shadow-e1. This project uses Tailwind v4, so there are no `@tailwind`
+  directives and no JS config file.
+*/
+@theme {
+  /* Typography — bound to the next/font variables set in app/layout.tsx */
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+
+  /* Colour roles — refined emerald + amber identity, one accent budget */
+  --color-canvas: #f7f5f1;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1efe9;
+  --color-ink: #1b1a17;
+  --color-ink-muted: #6c6a63;
+  --color-line: #e6e3dc;
+  --color-brand: #10502f;
+  --color-brand-strong: #0b3a22;
+  --color-brand-soft: #e7f0ea;
+  --color-accent: #ef9f2e;
+  --color-accent-soft: #fdf1dd;
+  --color-success: #16694a;
+  --color-warning: #9a6207;
+  --color-danger: #a4302b;
+
+  /* Radii */
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+
+  /* Elevation — 3 levels. Never stack a hairline border on a wide shadow. */
+  --shadow-e1: 0 1px 2px rgba(27, 26, 23, 0.06);
+  --shadow-e2: 0 10px 26px -14px rgba(27, 26, 23, 0.22);
+  --shadow-e3: 0 22px 50px -26px rgba(16, 80, 47, 0.3);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  /*
+    FLASH FIX: the app surface is painted at the document root, so route
+    transitions never reveal a white frame behind the content.
+  */
+  html {
+    background-color: var(--color-canvas);
+    color-scheme: light;
+  }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), sans-serif;
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background-color: var(--color-accent-soft);
+  }
 }
