@@ -86,3 +86,19 @@ api.interceptors.response.use(
     });
   },
 );
+
+/**
+ * Pulls a readable message out of an API error. NestJS returns `message` as a
+ * string, or as an array of strings for validation failures.
+ */
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong. Please try again.",
+): string {
+  if (axios.isAxiosError<{ message?: string | string[] }>(error)) {
+    const message = error.response?.data?.message;
+    if (Array.isArray(message) && message.length > 0) return message.join(" ");
+    if (typeof message === "string" && message) return message;
+  }
+  return fallback;
+}

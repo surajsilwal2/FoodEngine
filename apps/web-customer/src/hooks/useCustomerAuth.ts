@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 interface LoginPayload {
   email: string;
@@ -70,4 +71,30 @@ export function useRegister() {
       router.replace("/restaurants");
     },
   });
+}
+
+/**
+ * Keeps an already-signed-in visitor away from the auth screens by sending them
+ * back to the app. Returns true while the redirect is in flight so the page can
+ * render a placeholder instead of flashing its form to a signed-in user.
+ */
+export function useRedirectIfAuthenticated() {
+  const { isAuthenticated, isReady } = useAuth();
+  const router = useRouter();
+  const shouldRedirect = isReady && isAuthenticated;
+
+  useEffect(() => {
+    if (!shouldRedirect) return;
+
+    // Honour a safe ?next= target (single leading slash), else go to the app.
+    const nextPath = new URLSearchParams(window.location.search).get("next");
+    const returnPath =
+      nextPath?.startsWith("/") && !nextPath.startsWith("//")
+        ? nextPath
+        : "/restaurants";
+
+    router.replace(returnPath);
+  }, [shouldRedirect, router]);
+
+  return shouldRedirect;
 }

@@ -31,23 +31,33 @@ const STATUS_TONES: Record<string, Tone> = {
 
 export default function StatusBadge({
   status,
+  label,
+  tone,
   className = "",
 }: {
-  status: string;
+  /** A known status key (order lifecycle). Derives the label and tone. */
+  status?: string;
+  /** Explicit label, for statuses outside the order lifecycle. */
+  label?: string;
+  /** Explicit tone, for statuses outside the order lifecycle. */
+  tone?: Tone;
   className?: string;
 }) {
-  const tone = STATUS_TONES[status] ?? "neutral";
-  const label = STATUS_LABELS[status] ?? status.replaceAll("_", " ");
+  const resolvedTone = tone ?? STATUS_TONES[status ?? ""] ?? "neutral";
+  const resolvedLabel =
+    label ??
+    STATUS_LABELS[status ?? ""] ??
+    (status ?? "").replaceAll("_", " ");
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${TONE_CLASSES[tone]} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${TONE_CLASSES[resolvedTone]} ${className}`}
     >
       <span
-        className={`size-1.5 rounded-full ${DOT_CLASSES[tone]}`}
+        className={`size-1.5 rounded-full ${DOT_CLASSES[resolvedTone]}`}
         aria-hidden="true"
       />
-      {label}
+      {resolvedLabel}
     </span>
   );
 }

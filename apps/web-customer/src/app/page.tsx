@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import Button from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import Link from "next/link";
 
 export default function Home() {
   const { user, isAuthenticated, isReady, logout } = useAuth();
@@ -54,6 +55,17 @@ export default function Home() {
             </>
           )}
         </div>
+
+        {/* Second entry point into the merchant onboarding flow. */}
+        <p className="mt-8 text-sm text-ink-muted">
+          Own a restaurant?{" "}
+          <Link
+            href="/merchant-application"
+            className="font-semibold text-brand hover:underline"
+          >
+            Sell with us
+          </Link>
+        </p>
       </section>
     </main>
   );

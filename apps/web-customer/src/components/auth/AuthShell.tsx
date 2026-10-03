@@ -4,10 +4,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import React from "react";
 import Button from "@/components/ui/Button";
+import { inputClasses } from "@/components/ui/Field";
 
-// Shared input styling for the login and signup forms.
-export const inputStyle =
-  "w-full rounded-control border border-line bg-surface py-2.5 pl-10 pr-3 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-surface-muted";
+// Auth fields carry a leading icon, so they add extra left padding on top of
+// the shared field styling.
+export const inputStyle = `${inputClasses} pl-10 pr-3`;
 
 /**
  * Shared shell for the authentication screens. Lives outside the route folder

@@ -1,0 +1,27 @@
+import React from "react";
+
+/** Shared text-input styling so every form field in the app looks the same. */
+export const inputClasses =
+  "w-full rounded-control border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-surface-muted";
+
+/**
+ * A labelled form field. The label stays visible (never a placeholder-only
+ * field) and `hint` carries format guidance underneath the input.
+ */
+export default function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactElement;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-sm font-medium text-ink">{label}</span>
+      <span className="mt-1.5 block">{children}</span>
+      {hint && <span className="mt-1 block text-xs text-ink-muted">{hint}</span>}
+    </label>
+  );
+}
