@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import {
+  ClipboardList,
+  ShoppingBag,
+  Store,
+  UtensilsCrossed,
+} from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { buttonClasses } from "@/components/ui/Button";
@@ -10,6 +15,8 @@ import { buttonClasses } from "@/components/ui/Button";
 const NAV_ITEMS = [
   { href: "/restaurants", label: "Restaurants", icon: UtensilsCrossed },
   { href: "/orders", label: "Orders", icon: ClipboardList },
+  // Entry point for the merchant onboarding flow.
+  { href: "/merchant-application", label: "Sell with us", icon: Store },
 ];
 
 /**
@@ -33,10 +40,10 @@ export default function AppHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
-        <div className="flex items-center gap-6">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-6">
           <Link
             href="/"
-            className="font-display text-lg font-semibold tracking-tight text-brand"
+            className="shrink-0 font-display text-base font-semibold tracking-tight text-brand sm:text-lg"
           >
             FoodEngine
           </Link>
@@ -49,7 +56,7 @@ export default function AppHeader() {
                   key={href}
                   href={href}
                   aria-current={active ? "page" : undefined}
-                  className={`inline-flex items-center gap-2 rounded-control px-3 py-2 text-sm font-semibold transition ${
+                  className={`inline-flex items-center gap-2 rounded-control px-2.5 py-2 text-sm font-semibold transition sm:px-3 ${
                     active
                       ? "bg-surface-muted text-ink"
                       : "text-ink-muted hover:text-ink"
@@ -64,7 +71,7 @@ export default function AppHeader() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/cart"
             aria-current={isActive("/cart") ? "page" : undefined}

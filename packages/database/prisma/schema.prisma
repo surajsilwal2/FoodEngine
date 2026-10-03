@@ -14,6 +14,12 @@ enum UserRole {
   DRIVER
 }
 
+enum MerchantApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
@@ -57,9 +63,11 @@ model User {
   refreshTokens RefreshToken[]
 
   // Relations
-  tenantMemberships TenantMember[]
-  driverProfile     DriverProfile? // 1:1 relationship
-  orders            Order[]
+  tenantMemberships    TenantMember[]
+  merchantApplications MerchantApplication[] @relation("MerchantApplicant")
+  reviewedApplications MerchantApplication[] @relation("MerchantApplicationReviewer")
+  driverProfile        DriverProfile? // 1:1 relationship
+  orders               Order[]
 }
 
 model RefreshToken {
@@ -99,10 +107,32 @@ model Tenant {
   restaurants Restaurant[]
   orders      Order[] // Explicit relation for fast tenant-scoped queries
   payments    Payment[]
+  application MerchantApplication?
+}
+
+model MerchantApplication {
+  id              Int                       @id @default(autoincrement())
+  applicantId     Int                       @unique
+  businessName    String
+  businessAddress String
+  contactPhone    String
+  status          MerchantApplicationStatus @default(PENDING)
+  reviewNote      String?
+  reviewedById    Int?
+  reviewedAt      DateTime?
+  tenantId        Int?                      @unique
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  applicant User    @relation("MerchantApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
+  reviewer  User?   @relation("MerchantApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
 }
 
 model Restaurant {
-  id            Int    @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   tenantId      Int // Explicit Tenant Isolation Key
   name          String
   location      String

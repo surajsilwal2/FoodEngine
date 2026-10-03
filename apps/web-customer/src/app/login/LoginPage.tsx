@@ -4,8 +4,10 @@ import axios from "axios";
 import { LockKeyhole, Mail } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
-import { useLogin } from "@/hooks/useCustomerAuth";
+import { useLogin, useRedirectIfAuthenticated } from "@/hooks/useCustomerAuth";
+import { useAuth } from "@/context/AuthContext";
 import Alert from "@/components/ui/Alert";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   AuthShell,
   Input,
@@ -18,6 +20,9 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const loginMutation = useLogin();
+  const { isReady } = useAuth();
+  // A signed-in visitor must not be able to sit on the login screen.
+  const isRedirecting = useRedirectIfAuthenticated();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -34,6 +39,23 @@ const LoginPage = () => {
       );
     }
   };
+
+  // Hold the form back until the session has been read, so a signed-in visitor
+  // never sees the login form flash before the redirect takes effect. The
+  // placeholder mirrors the auth card so nothing jumps when it swaps in.
+  if (!isReady || isRedirecting) {
+    return (
+      <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-12 sm:px-6">
+        <div className="w-full max-w-md rounded-card bg-surface p-6 shadow-e3 sm:p-8">
+          <Skeleton className="h-6 w-28" />
+          <Skeleton className="mt-6 h-7 w-2/3" />
+          <Skeleton className="mt-3 h-4 w-full" />
+          <Skeleton className="mt-6 h-11 w-full" />
+          <Skeleton className="mt-4 h-11 w-full" />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <AuthShell
