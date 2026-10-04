@@ -1,4 +1,8 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import {
+  MerchantApplicationStatus,
+  PrismaClient,
+  UserRole,
+} from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -31,12 +35,12 @@ async function main() {
 
   const adminUser = await prisma.user.upsert({
     where: { email: 'alex@burgerking.com' },
-    update: {},
+    update: { userRole: UserRole.CUSTOMER },
     create: {
       name: 'Alex Merchant',
       email: 'alex@burgerking.com',
       passwordHash: await bcrypt.hash('ChangeMe123!', 12),
-      userRole: UserRole.MERCHANT_ADMIN,
+      userRole: UserRole.CUSTOMER,
     },
   });
   console.log(`✅ User created: ${adminUser.name} (ID: ${adminUser.id})`);
@@ -51,6 +55,32 @@ async function main() {
     },
   });
   console.log(`✅ Linked ${adminUser.name} to ${tenant.name} as MERCHANT_ADMIN`);
+
+  await prisma.merchantApplication.upsert({
+    where: { applicantId: adminUser.id },
+    update: {
+      businessName: tenant.name,
+      businessAddress: '123 Main Street, Sector 4',
+      contactPhone: '9800000000',
+      status: MerchantApplicationStatus.APPROVED,
+      reviewNote: 'Approved for local development.',
+      reviewedById: systemAdmin.id,
+      reviewedAt: new Date(),
+      tenantId: tenant.id,
+    },
+    create: {
+      applicantId: adminUser.id,
+      businessName: tenant.name,
+      businessAddress: '123 Main Street, Sector 4',
+      contactPhone: '9800000000',
+      status: MerchantApplicationStatus.APPROVED,
+      reviewNote: 'Approved for local development.',
+      reviewedById: systemAdmin.id,
+      reviewedAt: new Date(),
+      tenantId: tenant.id,
+    },
+  });
+  console.log(`✅ Approved merchant application seeded for ${adminUser.email}`);
 
   // Menu prices are in Nepali Rupees (NPR).
   const restaurants = [
