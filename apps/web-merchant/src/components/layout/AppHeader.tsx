@@ -20,7 +20,7 @@ export default function AppHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-4 px-5 sm:px-8">
+      <div className="mx-auto flex min-h-16 max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-2 sm:px-8">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2 font-display text-base font-semibold tracking-tight text-brand sm:text-lg"
@@ -31,6 +31,31 @@ export default function AppHeader() {
             Merchant
           </span>
         </Link>
+
+        {isReady && isAuthenticated && (
+          <nav aria-label="Merchant workspace" className="flex items-center gap-1">
+            {[
+              { href: "/dashboard", label: "Overview" },
+              { href: "/restaurants", label: "Restaurants" },
+            ].map(({ href, label }) => {
+              const active = pathname === href || pathname.startsWith(`${href}/`);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={`rounded-control px-3 py-2 text-sm font-semibold transition ${
+                    active
+                      ? "bg-surface-muted text-ink"
+                      : "text-ink-muted hover:bg-surface-muted hover:text-ink"
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
         {/* The account slot stays empty until the session has been read, so it
             never flashes a "Sign out" for a signed-out visitor. */}
