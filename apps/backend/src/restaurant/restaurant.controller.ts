@@ -52,8 +52,13 @@ export class RestaurantController {
     return this.restaurantService.create(dto);
   }
 
-  // list all restaurants for a tenant
-  @ApiOperation({ summary: 'Get all restaurants for a tenant' })
+  // Management list: unlike public catalog reads, this is tenant-private.
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get restaurants managed by the current tenant member',
+  })
+  @UseGuards(JwtAuthGuard, TenantRoleGuard)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.SYSTEM_ADMIN)
   @Get('/tenant/:tenantId')
   async findAllRestaurantByTenant(
     @Param('tenantId', ParseIntPipe) tenantId: number,
@@ -68,7 +73,6 @@ export class RestaurantController {
     return this.restaurantService.findOne(restaurantId);
   }
 
-  
   //update restaurant details
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Update restaurant details' })

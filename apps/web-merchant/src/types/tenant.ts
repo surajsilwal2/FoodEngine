@@ -22,3 +22,27 @@ export interface TenantMembership {
   role: string;
   joinedAt: string;
 }
+
+export interface MerchantRestaurant {
+  id: number;
+  tenantId: number;
+  name: string;
+  location: string;
+  description: string;
+  isOpen: boolean;
+  createdAt: string;
+}
+
+export interface CreateRestaurantInput {
+  tenantId: number;
+  name: string;
+  location: string;
+  description: string;
+}
+
+export interface UpdateRestaurantInput {
+  name?: string;
+  location?: string;
+  description?: string;
+  isOpen?: boolean;
+}
