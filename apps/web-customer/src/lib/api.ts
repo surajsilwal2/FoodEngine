@@ -15,6 +15,40 @@ type RetriableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
 let refreshRequest: Promise<string> | null = null;
 
+/**
+ * Shares one refresh call between HTTP requests and the WebSocket. A successful
+ * refresh notifies the socket so it uses the new token on its next handshake.
+ */
+export function refreshAccessToken(): Promise<string> {
+  if (!refreshRequest) {
+    refreshRequest = axios
+      .post<RefreshResponse>(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+      .then(({ data }) => {
+        localStorage.setItem("accessToken", data.accessToken);
+        window.dispatchEvent(
+          new CustomEvent("auth:token-refreshed", {
+            detail: { accessToken: data.accessToken },
+          }),
+        );
+        return data.accessToken;
+      })
+      .catch((refreshError: unknown) => {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        window.dispatchEvent(
+          new CustomEvent("auth:expired", { detail: { returnTo } }),
+        );
+        throw refreshError;
+      })
+      .finally(() => {
+        refreshRequest = null;
+      });
+  }
+
+  return refreshRequest;
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -57,29 +91,7 @@ api.interceptors.response.use(
     }
 
     originalRequest._retry = true;
-    if (!refreshRequest) {
-      // Share one refresh call across concurrent 401 responses.
-      refreshRequest = axios
-        .post<RefreshResponse>(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
-        .then(({ data }) => {
-          localStorage.setItem("accessToken", data.accessToken);
-          return data.accessToken;
-        })
-        .catch((refreshError: unknown) => {
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("user");
-          const returnTo = `${window.location.pathname}${window.location.search}`;
-          window.dispatchEvent(
-            new CustomEvent("auth:expired", { detail: { returnTo } }),
-          );
-          throw refreshError;
-        })
-        .finally(() => {
-          refreshRequest = null;
-        });
-    }
-
-    return refreshRequest.then((accessToken) => {
+    return refreshAccessToken().then((accessToken) => {
       // Retry the failed API call once with the newly issued access token.
       originalRequest.headers.Authorization = `Bearer ${accessToken}`;
       return api(originalRequest);

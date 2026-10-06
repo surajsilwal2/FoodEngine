@@ -21,15 +21,24 @@ import type { MerchantRestaurant } from "@/types/tenant";
 interface RestaurantForm {
   name: string;
   location: string;
+  restaurantLat: string;
+  restaurantLng: string;
   description: string;
 }
 
 const EMPTY_FORM: RestaurantForm = {
   name: "",
   location: "",
+  restaurantLat: "",
+  restaurantLng: "",
   description: "",
 };
 
+/**
+ * This screen loads only the signed-in merchant's tenant locations. It keeps
+ * the list visible during loading, shows retryable errors, and uses the same
+ * form for creating a location and editing its details/open state.
+ */
 export default function MerchantRestaurantsPage() {
   const { isReady, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -86,6 +95,8 @@ export default function MerchantRestaurantsPage() {
     setForm({
       name: restaurant.name,
       location: restaurant.location,
+      restaurantLat: restaurant.restaurantLat?.toString() ?? "",
+      restaurantLng: restaurant.restaurantLng?.toString() ?? "",
       description: restaurant.description,
     });
     setFormError("");
@@ -98,9 +109,34 @@ export default function MerchantRestaurantsPage() {
     setFormError("");
     if (!activeTenant) return;
 
+    const latitudeText = form.restaurantLat.trim();
+    const longitudeText = form.restaurantLng.trim();
+    if ((latitudeText === "") !== (longitudeText === "")) {
+      setFormError("Enter both coordinates, or leave both blank.");
+      return;
+    }
+
+    const restaurantLat = latitudeText === "" ? null : Number(latitudeText);
+    const restaurantLng = longitudeText === "" ? null : Number(longitudeText);
+    if (
+      (restaurantLat !== null &&
+        (!Number.isFinite(restaurantLat) ||
+          restaurantLat < -90 ||
+          restaurantLat > 90)) ||
+      (restaurantLng !== null &&
+        (!Number.isFinite(restaurantLng) ||
+          restaurantLng < -180 ||
+          restaurantLng > 180))
+    ) {
+      setFormError("Latitude must be -90 to 90 and longitude -180 to 180.");
+      return;
+    }
+
     const payload = {
       name: form.name.trim(),
       location: form.location.trim(),
+      restaurantLat,
+      restaurantLng,
       description: form.description.trim(),
     };
 
@@ -286,6 +322,38 @@ export default function MerchantRestaurantsPage() {
                       className={inputClasses}
                     />
                   </Field>
+                  <Field label="Latitude">
+                    <input
+                      type="number"
+                      min={-90}
+                      max={90}
+                      step="any"
+                      value={form.restaurantLat}
+                      onChange={(event) =>
+                        setForm({ ...form, restaurantLat: event.target.value })
+                      }
+                      className={inputClasses}
+                      placeholder="e.g. 37.7749"
+                    />
+                  </Field>
+                  <Field label="Longitude">
+                    <input
+                      type="number"
+                      min={-180}
+                      max={180}
+                      step="any"
+                      value={form.restaurantLng}
+                      onChange={(event) =>
+                        setForm({ ...form, restaurantLng: event.target.value })
+                      }
+                      className={inputClasses}
+                      placeholder="e.g. -122.4194"
+                    />
+                  </Field>
+                  <p className="text-xs leading-5 text-ink-muted sm:col-span-2">
+                    Both coordinates are needed before this location can start
+                    driver dispatch. Leave both blank to add them later.
+                  </p>
                   <div className="sm:col-span-2">
                     <Field label="Description">
                       <textarea
@@ -344,6 +412,12 @@ export default function MerchantRestaurantsPage() {
                       </p>
                       <p className="mt-2 text-sm text-ink-muted">
                         {restaurant.description}
+                      </p>
+                      <p className="mt-2 text-xs text-ink-muted">
+                        {restaurant.restaurantLat != null &&
+                        restaurant.restaurantLng != null
+                          ? `Dispatch location: ${restaurant.restaurantLat}, ${restaurant.restaurantLng}`
+                          : "Dispatch location not set"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">

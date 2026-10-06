@@ -3,22 +3,27 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import {
+  DeliveryStatus,
   OrderStatus,
+  PaymentStatus,
   Prisma,
   PrismaService,
   UserRole,
 } from '@foodengine/database';
 import { UpdateOrderDto } from './dto/update-order.dto.js';
 import { DispatchGateway } from '../dispatch/dispatch.gateway.js';
+import { DispatchService } from '../dispatch/dispatch.service.js';
 
 @Injectable()
 export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dispatchGateway: DispatchGateway,
+    private readonly dispatchService: DispatchService,
   ) {}
 
   async createOrder(customerId: number, dto: CreateOrderDto) {
@@ -27,6 +32,24 @@ export class OrderService {
       throw new BadRequestException('An order must contain at least one item');
 
     return this.prisma.$transaction(async (tx) => {
+      const restaurant = await tx.restaurant.findFirst({
+        where: {
+          id: dto.restaurantId,
+          tenantId: dto.tenantId,
+          deletedAt: null,
+        },
+        select: { id: true, isOpen: true },
+      });
+
+      if (!restaurant) {
+        throw new NotFoundException('Restaurant is unavailable');
+      }
+      if (!restaurant.isOpen) {
+        throw new BadRequestException(
+          'This restaurant is currently closed and cannot accept orders',
+        );
+      }
+
       // Fetch items from the requested restaurant and tenant. Prices and names
       // are read from the database rather than accepted from the client.
       const menuItemIds = dto.items.map((i) => i.menuItemId);
@@ -99,7 +122,7 @@ export class OrderService {
       include: {
         items: true,
         restaurant: { select: { id: true, name: true } },
-        customer: { select: { id: true, name: true, email: true } },
+        customer: { select: { id: true, name: true } },
       },
     });
     if (!order || order.deletedAt) {
@@ -136,10 +159,19 @@ export class OrderService {
   }
 
   async getRestaurantOrders(restaurantId: number) {
-    // Authorization is performed by the controller guards using restaurantId.
+    // Only completed payments are actionable. Unpaid PENDING orders stay out
+    // of the restaurant inbox until checkout succeeds.
     return this.prisma.order.findMany({
-      where: { restaurantId, deletedAt: null },
-      include: { items: true, customer: { select: { id: true, name: true } } },
+      where: {
+        restaurantId,
+        deletedAt: null,
+        payment: { is: { status: PaymentStatus.COMPLETED } },
+      },
+      include: {
+        items: true,
+        customer: { select: { id: true, name: true } },
+        delivery: { select: { id: true, status: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -147,7 +179,18 @@ export class OrderService {
   async updateOrderStatus(orderId: number, dto: UpdateOrderDto) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId, deletedAt: null },
-      include: { payment: true },
+      include: {
+        payment: true,
+        delivery: true,
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+            restaurantLat: true,
+            restaurantLng: true,
+          },
+        },
+      },
     });
     if (!order || order.deletedAt) {
       throw new NotFoundException(`Order #${orderId} not found`);
@@ -156,18 +199,14 @@ export class OrderService {
     // This map makes the allowed order lifecycle explicit and rejects skipped
     // or reversed states (for example, PENDING directly to READY_FOR_PICKUP).
     const validTransition: Record<OrderStatus, OrderStatus[]> = {
-      [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+      [OrderStatus.PENDING]: [],
       [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
       [OrderStatus.PREPARING]: [
         OrderStatus.READY_FOR_PICKUP,
         OrderStatus.CANCELLED,
       ],
-      // Delivery updates these two states after a driver accepts the order.
-      [OrderStatus.READY_FOR_PICKUP]: [
-        OrderStatus.PICKED_UP,
-        OrderStatus.CANCELLED,
-      ],
-      [OrderStatus.PICKED_UP]: [OrderStatus.DELIVERED],
+      [OrderStatus.READY_FOR_PICKUP]: [OrderStatus.CANCELLED],
+      [OrderStatus.PICKED_UP]: [],
       [OrderStatus.DELIVERED]: [],
       [OrderStatus.CANCELLED]: [],
     };
@@ -178,28 +217,206 @@ export class OrderService {
       );
     }
 
+    if (dto.newStatus === OrderStatus.PREPARING) {
+      if (order.payment?.status !== PaymentStatus.COMPLETED) {
+        throw new BadRequestException('Only paid orders can be prepared');
+      }
+      if (
+        order.restaurant.restaurantLat == null ||
+        order.restaurant.restaurantLng == null
+      ) {
+        throw new BadRequestException(
+          'Set this restaurant latitude and longitude before starting preparation',
+        );
+      }
+      if (order.delivery?.status !== DeliveryStatus.SEARCHING) {
+        throw new BadRequestException(
+          'This order does not have a delivery ready for driver search',
+        );
+      }
+    }
+
+    if (
+      dto.newStatus === OrderStatus.CANCELLED &&
+      order.delivery &&
+      (order.delivery.status === DeliveryStatus.ASSIGNED ||
+        order.delivery.status === DeliveryStatus.PICKED_UP)
+    ) {
+      throw new BadRequestException(
+        'This order cannot be cancelled after a driver has accepted it',
+      );
+    }
+
     const updatedOrder = await this.prisma.$transaction(async (tx) => {
-      // order is cancelled but payment has done then update the payment status to refunded
+      const orderUpdate = await tx.order.updateMany({
+        where: { id: orderId, status: order.status, deletedAt: null },
+        data: { status: dto.newStatus },
+      });
+      if (orderUpdate.count !== 1) {
+        throw new BadRequestException('The order status has already changed');
+      }
+
       if (
         dto.newStatus === OrderStatus.CANCELLED &&
-        order.payment &&
-        order.payment.status === 'COMPLETED'
+        order.payment?.status === PaymentStatus.COMPLETED
       ) {
         await tx.payment.update({
           where: { id: order.payment.id },
-          data: { status: 'REFUNDED' },
+          data: { status: PaymentStatus.REFUNDED },
         });
       }
-      return tx.order.update({
+      if (
+        dto.newStatus === OrderStatus.CANCELLED &&
+        order.delivery &&
+        (order.delivery.status === DeliveryStatus.SEARCHING ||
+          order.delivery.status === DeliveryStatus.FAILED)
+      ) {
+        const deliveryUpdate = await tx.delivery.updateMany({
+          where: {
+            id: order.delivery.id,
+            status: order.delivery.status,
+            driverProfileId: null,
+          },
+          data: { status: DeliveryStatus.CANCELLED },
+        });
+        if (deliveryUpdate.count !== 1) {
+          throw new BadRequestException(
+            'A driver accepted this delivery while cancellation was in progress',
+          );
+        }
+      }
+      return tx.order.findUniqueOrThrow({
         where: { id: orderId },
-        data: { status: dto.newStatus },
+        include: {
+          restaurant: { select: { id: true } },
+        },
       });
     });
 
     this.dispatchGateway.notifyOrderStatus(orderId, {
       status: updatedOrder.status,
     });
+    this.dispatchGateway.notifyRestaurantOrderChanged(
+      updatedOrder.restaurantId,
+      { orderId, status: updatedOrder.status },
+    );
+
+    if (dto.newStatus === OrderStatus.PREPARING && order.delivery) {
+      const jobData = {
+        orderId,
+        deliveryId: order.delivery.id,
+        restaurantId: updatedOrder.restaurantId,
+        restaurantLat: order.restaurant.restaurantLat!,
+        restaurantLng: order.restaurant.restaurantLng!,
+        restaurantName: order.restaurant.name,
+        cycleId: updatedOrder.updatedAt.getTime(),
+        attemptNumber: 1,
+        offeredDriverProfileIds: [],
+      };
+
+      try {
+        await this.dispatchService.enqueueSearch(jobData);
+      } catch {
+        await this.prisma.delivery.updateMany({
+          where: {
+            id: order.delivery.id,
+            status: DeliveryStatus.SEARCHING,
+          },
+          data: { status: DeliveryStatus.FAILED },
+        });
+        this.dispatchGateway.notifyRestaurantOrderChanged(
+          updatedOrder.restaurantId,
+          {
+            type: 'dispatch_attention',
+            orderId,
+            deliveryStatus: DeliveryStatus.FAILED,
+            message: 'Driver search could not be started. Retry dispatch.',
+          },
+        );
+      }
+    }
 
     return updatedOrder;
+  }
+
+  async retryDispatch(orderId: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId, deletedAt: null },
+      include: {
+        delivery: true,
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+            restaurantLat: true,
+            restaurantLng: true,
+          },
+        },
+      },
+    });
+    if (!order) throw new NotFoundException(`Order #${orderId} not found`);
+    if (
+      (order.status !== OrderStatus.PREPARING &&
+        order.status !== OrderStatus.READY_FOR_PICKUP) ||
+      !order.delivery
+    ) {
+      throw new BadRequestException(
+        'Driver search can only be retried for an active restaurant order',
+      );
+    }
+    if (order.delivery.status !== DeliveryStatus.FAILED) {
+      throw new BadRequestException(
+        'Driver search does not currently need a manual retry',
+      );
+    }
+    if (
+      order.restaurant.restaurantLat == null ||
+      order.restaurant.restaurantLng == null
+    ) {
+      throw new BadRequestException(
+        'Set this restaurant latitude and longitude before retrying dispatch',
+      );
+    }
+
+    const restarted = await this.prisma.delivery.updateMany({
+      where: {
+        id: order.delivery.id,
+        status: DeliveryStatus.FAILED,
+        driverProfileId: null,
+      },
+      data: { status: DeliveryStatus.SEARCHING },
+    });
+    if (restarted.count !== 1) {
+      throw new BadRequestException('Driver search has already been restarted');
+    }
+
+    try {
+      await this.dispatchService.enqueueSearch({
+        orderId,
+        deliveryId: order.delivery.id,
+        restaurantId: order.restaurantId,
+        restaurantLat: order.restaurant.restaurantLat,
+        restaurantLng: order.restaurant.restaurantLng,
+        restaurantName: order.restaurant.name,
+        cycleId: Date.now(),
+        attemptNumber: 1,
+        offeredDriverProfileIds: [],
+      });
+    } catch {
+      await this.prisma.delivery.updateMany({
+        where: { id: order.delivery.id, status: DeliveryStatus.SEARCHING },
+        data: { status: DeliveryStatus.FAILED },
+      });
+      throw new ServiceUnavailableException(
+        'Driver search could not be queued. Please retry in a moment.',
+      );
+    }
+
+    this.dispatchGateway.notifyRestaurantOrderChanged(order.restaurantId, {
+      type: 'dispatch_restarted',
+      orderId,
+      deliveryStatus: DeliveryStatus.SEARCHING,
+    });
+    return { orderId, deliveryStatus: DeliveryStatus.SEARCHING };
   }
 }

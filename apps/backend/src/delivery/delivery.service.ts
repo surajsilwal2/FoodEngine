@@ -86,6 +86,13 @@ export class DeliveryService {
       driverName: updatedDelivery.driver?.user.name,
       vehicleDetails: updatedDelivery.driver?.vehicleDetails,
     });
+    this.dispatchGateway.notifyRestaurantOrderChanged(
+      updatedDelivery.order.restaurantId,
+      {
+        orderId: updatedDelivery.orderId,
+        deliveryStatus: DeliveryStatus.ASSIGNED,
+      },
+    );
 
     return updatedDelivery;
   }

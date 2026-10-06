@@ -13,6 +13,22 @@ export function useRestaurants() {
   });
 }
 
+/**
+ * Reads the current restaurant record separately from its menu so ordering
+ * controls can react to the latest open/closed state.
+ */
+export function useRestaurantDetails(restaurantId: number) {
+  return useQuery<Restaurant>({
+    queryKey: ["restaurant-details", restaurantId],
+    queryFn: async () => {
+      const { data } = await api.get(`/restaurant/${restaurantId}`);
+      return data;
+    },
+    enabled: Number.isInteger(restaurantId) && restaurantId > 0,
+    staleTime: 15_000,
+  });
+}
+
 export function useRestaurantMenu(restaurantId: number) {
   return useQuery<MenuCategory[]>({
     queryKey: ["restaurants", restaurantId],

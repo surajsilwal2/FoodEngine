@@ -89,6 +89,15 @@ export class OrderController {
   }
 
   @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Retry driver search for a preparing order' })
+  @UseGuards(JwtAuthGuard, OrderTenantContextGuard, TenantRoleGuard)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Post(':id/dispatch/retry')
+  async retryDispatch(@Param('id', ParseIntPipe) id: number) {
+    return this.orderService.retryDispatch(id);
+  }
+
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Update order status (e.g. PREPARING, READY_FOR_PICKUP)',
   })

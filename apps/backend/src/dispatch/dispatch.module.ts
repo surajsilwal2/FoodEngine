@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { DispatchGateway } from './dispatch.gateway.js';
 import { BullModule } from '@nestjs/bullmq';
 import { DriverModule } from '../driver/driver.module.js';
+import { DispatchProcessor } from './dispatch.processor.js';
+import { DispatchService } from './dispatch.service.js';
 
 @Module({
   imports: [
@@ -15,7 +17,7 @@ import { DriverModule } from '../driver/driver.module.js';
     DriverModule,
   ],
 
-  providers: [DispatchGateway],
-  exports: [DispatchGateway, BullModule],
+  providers: [DispatchGateway, DispatchProcessor, DispatchService],
+  exports: [DispatchGateway, DispatchService, BullModule],
 })
 export class DispatchModule {}

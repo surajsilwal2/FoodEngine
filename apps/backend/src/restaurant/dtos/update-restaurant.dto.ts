@@ -4,6 +4,9 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  IsNumber,
+  Max,
+  Min,
 } from 'class-validator';
 
 export class UpdateRestaurantDto {
@@ -28,4 +31,16 @@ export class UpdateRestaurantDto {
   @IsOptional()
   @IsBoolean()
   isOpen?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  restaurantLat?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  restaurantLng?: number | null;
 }

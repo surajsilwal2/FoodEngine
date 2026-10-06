@@ -11,30 +11,26 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ProcessPaymentDto } from './dto/process-payment.dto.js';
 import { DispatchGateway } from '../dispatch/dispatch.gateway.js';
-import { DriverService } from '../driver/driver.service.js';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 
 @Injectable()
 export class PaymentsService {
-  private readonly logger = new Logger(PaymentsService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly dispatchGateway: DispatchGateway,
-    private readonly driverService: DriverService,
-    @InjectQueue('dispatch-queue') private readonly dispatchQueue: Queue,
   ) {}
 
   async createPayment(customerId: number, dto: ProcessPaymentDto) {
     // Load the order and its one-to-one payment record before attempting a charge. The amount always comes from the stored order total.
     const order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
-      include: { payment: true },
+      include: {
+        payment: true,
+        restaurant: { select: { id: true, isOpen: true, deletedAt: true } },
+      },
     });
     if (!order || order.deletedAt) {
       throw new NotFoundException(`Order #${dto.orderId} not found`);
@@ -44,6 +40,12 @@ export class PaymentsService {
     if (order.customerId !== customerId) {
       throw new ForbiddenException(
         'You are not authorized to pay for this order',
+      );
+    }
+
+    if (!order.restaurant || order.restaurant.deletedAt || !order.restaurant.isOpen) {
+      throw new BadRequestException(
+        'This restaurant is closed and cannot accept payment for this order',
       );
     }
 
@@ -64,8 +66,28 @@ export class PaymentsService {
     // A real provider would supply this value after a verified callback.
     const mockTxnId = `MOCK_TXN_${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
     const selectedMethod = dto.paymentMethod || PaymentMethod.MOCK_CARD;
+    if (selectedMethod === PaymentMethod.CASH_ON_DELIVERY) {
+      throw new BadRequestException(
+        'Cash on delivery is not available yet. Choose an online payment method.',
+      );
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const restaurant = await tx.restaurant.findFirst({
+        where: {
+          id: order.restaurantId,
+          tenantId: order.tenantId,
+          deletedAt: null,
+          isOpen: true,
+        },
+        select: { id: true },
+      });
+      if (!restaurant) {
+        throw new BadRequestException(
+          'This restaurant has closed. The pending order was not paid.',
+        );
+      }
+
       // This conditional update is the payment-state lock. Concurrent callers
       // cannot both advance the same order from PENDING to CONFIRMED.
       const orderUpdate = await tx.order.updateMany({
@@ -115,42 +137,10 @@ export class PaymentsService {
     this.dispatchGateway.notifyOrderStatus(order.id, {
       status: OrderStatus.CONFIRMED,
     });
-
-    // Dispatch is outside the transaction: database state must remain committed even when Redis or a socket server is temporarily down.
-    const restaurant = await this.prisma.restaurant.findUnique({
-      where: { id: order?.restaurantId },
+    this.dispatchGateway.notifyRestaurantOrderChanged(order.restaurantId, {
+      orderId: order.id,
+      status: OrderStatus.CONFIRMED,
     });
-
-    if (restaurant?.restaurantLat == null || restaurant.restaurantLng == null) {
-      // The delivery remains SEARCHING for a retry/manual assignment;
-      this.logger.warn(
-        `Delivery #${result.delivery.id} was not dispatched: restaurant coordinates are missing`,
-      );
-      return result;
-    }
-
-    // enqueue background dispatch retry job
-    // bullmq will attempt the job up to 5 times, waiting for 15sec for each retries
-    await this.dispatchQueue.add(
-      'find-driver',
-      {
-        deliveryId: result.delivery.id,
-        restaurantLat: restaurant.restaurantLat,
-        restaurantLng: restaurant.restaurantLng,
-      },
-      {
-        attempts: 5,
-        backoff: {
-          type: 'fixed',
-          delay: 15000, // wait 15 seconds before retry
-        },
-        removeOnComplete: true, // auto-clean finished job from redis
-      },
-    );
-
-    this.logger.log(
-      `Enqueued background dispatch job for Delivery #${result.delivery.id}`,
-    );
 
     return result;
   }

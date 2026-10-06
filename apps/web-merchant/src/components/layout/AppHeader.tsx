@@ -36,6 +36,7 @@ export default function AppHeader() {
           <nav aria-label="Merchant workspace" className="flex items-center gap-1">
             {[
               { href: "/dashboard", label: "Overview" },
+              { href: "/orders", label: "Orders" },
               { href: "/restaurants", label: "Restaurants" },
             ].map(({ href, label }) => {
               const active = pathname === href || pathname.startsWith(`${href}/`);

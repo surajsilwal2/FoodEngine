@@ -24,7 +24,7 @@ export interface Order {
   restaurant: { id?: number; name: string };
 }
 
-export type PaymentMethod = "MOCK_CARD" | "CASH_ON_DELIVERY" | "MOCK_WALLET";
+export type PaymentMethod = "MOCK_CARD" | "MOCK_WALLET";
 
 export interface Payment {
   id: number;

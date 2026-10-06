@@ -32,6 +32,8 @@ export function useOrderDetail(orderId: number, enabled = true) {
     queryKey: ["order", orderId],
     queryFn: async () => (await api.get(`/order/${orderId}`)).data,
     enabled: enabled && Number.isInteger(orderId) && orderId > 0,
+    // Customer live tracking uses this as recovery when its socket is offline.
+    refetchInterval: enabled ? 5_000 : false,
   });
 }
 

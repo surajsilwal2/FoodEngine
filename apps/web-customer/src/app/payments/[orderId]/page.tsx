@@ -11,6 +11,7 @@ import { type PaymentMethod } from "@/types/orders";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import { formatCurrency, humanizeStatus } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/api";
 import { ArrowLeft, Check, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -19,9 +20,12 @@ import { useState } from "react";
 const paymentMethods: { value: PaymentMethod; label: string }[] = [
   { value: "MOCK_CARD", label: "Mock card" },
   { value: "MOCK_WALLET", label: "Mock wallet" },
-  { value: "CASH_ON_DELIVERY", label: "Cash on delivery (simulated)" },
 ];
 
+/**
+ * The page confirms the order total, offers supported online demo payments,
+ * and keeps the order/cart visible when loading or payment fails.
+ */
 const PaymentPage = () => {
   const params = useParams<{ orderId: string }>();
   const orderId = Number(params.orderId);
@@ -192,8 +196,10 @@ const PaymentPage = () => {
                 </p>
                 {processPayment.isError && (
                   <Alert className="mt-4">
-                    Payment could not be completed. The order may no longer be
-                    awaiting payment.
+                    {getApiErrorMessage(
+                      processPayment.error,
+                      "Payment could not be completed. The order may no longer be awaiting payment.",
+                    )}
                   </Alert>
                 )}
                 <Button
