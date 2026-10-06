@@ -24,8 +24,8 @@ function roleLabel(role: string): string {
 
 /**
  * Landing screen for an approved merchant. It shows which workspace the account
- * can use. Restaurant setup and order management are not built yet, and the page
- * says that plainly instead of hinting at features that don't exist.
+ * can use. Operational links stay visible so the owner can move directly from
+ * workspace setup into restaurant and order management.
  */
 export default function MerchantDashboardPage() {
   const { isReady, isAuthenticated, user } = useAuth();
@@ -193,10 +193,12 @@ export default function MerchantDashboardPage() {
                   <span className="flex-1">
                     <span className="block text-sm font-semibold">Orders</span>
                     <span className="mt-1 block text-sm text-ink-muted">
-                      Incoming orders will appear after a restaurant is ready.
+                      Paid customer orders appear here after checkout succeeds.
                     </span>
                   </span>
-                  <span className="text-sm text-ink-muted">Not loaded</span>
+                    <Button href="/orders" variant="secondary" size="sm">
+                      Open orders
+                    </Button>
                 </li>
               </ul>
             </section>

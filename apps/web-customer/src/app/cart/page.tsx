@@ -3,6 +3,7 @@
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCreateOrder } from "@/hooks/useCustomerOrders";
+import { useRestaurantDetails } from "@/hooks/useCatalog";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
@@ -14,6 +15,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+/**
+ * Restores the customer's cart before showing it. Closed locations keep their
+ * cart contents but cannot continue to order creation or payment.
+ */
 const CartPage = () => {
   const {
     items,
@@ -28,10 +33,13 @@ const CartPage = () => {
     clearPendingOrder,
   } = useCart();
   const { isAuthenticated, isReady } = useAuth();
+  const restaurantQuery = useRestaurantDetails(restaurantId ?? 0);
   const router = useRouter();
   const createOrderMutation = useCreateOrder();
   const [error, setError] = useState("");
   const [isCheckingPendingOrder, setIsCheckingPendingOrder] = useState(false);
+  const restaurantIsClosed = restaurantQuery.data?.isOpen === false;
+  const restaurantAvailabilityKnown = restaurantQuery.isSuccess;
 
   const placeOrder = async () => {
     if (!restaurantId || !tenantId || items.length === 0) return;
@@ -186,6 +194,26 @@ const CartPage = () => {
             </section>
 
             <aside className="h-fit rounded-card bg-surface p-5 shadow-e1">
+              {restaurantIsClosed && (
+                <Alert>
+                  This restaurant is closed. Your cart is saved, but checkout is
+                  unavailable until it reopens.
+                </Alert>
+              )}
+              {restaurantQuery.isError && (
+                <Alert>
+                  We could not check whether this restaurant is open. Checkout
+                  stays disabled until its availability can be confirmed.
+                  <Button
+                    className="ml-2"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void restaurantQuery.refetch()}
+                  >
+                    Retry
+                  </Button>
+                </Alert>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-ink-muted">Subtotal</span>
                 <strong className="text-ink">
@@ -202,10 +230,19 @@ const CartPage = () => {
                 </p>
               )}
               {error && <Alert className="mt-4">{error}</Alert>}
-              {isAuthenticated ? (
+              {restaurantIsClosed ? (
+                <Button className="mt-5 w-full" disabled>
+                  Restaurant closed
+                </Button>
+              ) : isAuthenticated ? (
                 <Button
                   className="mt-5 w-full"
-                  disabled={createOrderMutation.isPending || isCheckingPendingOrder}
+                  disabled={
+                    !restaurantAvailabilityKnown ||
+                    restaurantIsClosed ||
+                    createOrderMutation.isPending ||
+                    isCheckingPendingOrder
+                  }
                   onClick={() => void goToPayment()}
                 >
                   {createOrderMutation.isPending

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRestaurantMenu } from "@/hooks/useCatalog";
+import { useRestaurantDetails, useRestaurantMenu } from "@/hooks/useCatalog";
 import { useCart } from "@/context/CartContext";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
@@ -10,14 +10,23 @@ import { formatCurrency } from "@/lib/format";
 import Link from "next/link";
 import { ArrowLeft, Check, Plus, UtensilsCrossed } from "lucide-react";
 
+/**
+ * Shows the menu even when the restaurant is closed, but enables add-to-cart
+ * only after its current availability has loaded successfully and is open.
+ */
 export default function RestaurantDetailPage({ id }: { id: string }) {
   const restaurantId = Number(id);
   const { addItem } = useCart();
+  const restaurantQuery = useRestaurantDetails(restaurantId);
   const {
     data: categories,
-    isLoading,
-    isError,
+    isLoading: isMenuLoading,
+    isError: isMenuError,
   } = useRestaurantMenu(restaurantId);
+  const isLoading = restaurantQuery.isLoading || isMenuLoading;
+  const isClosed = restaurantQuery.data?.isOpen === false;
+  const canOrder = restaurantQuery.isSuccess && !isClosed;
+  const isError = restaurantQuery.isError || isMenuError;
   const itemCount =
     categories?.reduce(
       (total, category) => total + category.menuItems.length,
@@ -37,7 +46,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
         <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-              Menu
+                {restaurantQuery.data?.name ?? "Menu"}
             </h1>
             {!isLoading && (
               <p className="mt-2 text-sm text-ink-muted">
@@ -49,6 +58,28 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
             View cart
           </Button>
         </div>
+
+        {isClosed && (
+          <Alert className="mt-6">
+            This restaurant is closed right now. You can browse the menu, but
+            adding items to your cart is unavailable until it reopens.
+          </Alert>
+        )}
+
+        {restaurantQuery.isError && (
+          <Alert className="mt-6">
+            We couldn&apos;t check this restaurant&apos;s current availability, so
+            ordering is disabled. Please try again.
+            <Button
+              className="ml-3"
+              size="sm"
+              variant="secondary"
+              onClick={() => void restaurantQuery.refetch()}
+            >
+              Retry
+            </Button>
+          </Alert>
+        )}
 
         <div className="mt-8 space-y-10">
           {isLoading && (
@@ -65,7 +96,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
             </div>
           )}
 
-          {isError && (
+          {isMenuError && (
             <Alert>
               Failed to load this restaurant&apos;s menu. Please try again.
             </Alert>
@@ -115,23 +146,29 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
 
                       <Button
                         size="sm"
-                        variant={item.isAvailable ? "primary" : "secondary"}
+                        variant={item.isAvailable && canOrder ? "primary" : "secondary"}
                         className="shrink-0 self-end"
-                        disabled={!item.isAvailable}
+                        disabled={!item.isAvailable || !canOrder}
                         onClick={() => addItem(item)}
                         aria-label={
-                          item.isAvailable
+                          !canOrder
+                            ? `${item.name} cannot be ordered while this restaurant is closed or unavailable`
+                            : item.isAvailable
                             ? `Add ${item.name} to cart`
                             : `${item.name} is sold out`
                         }
                       >
-                        {item.isAvailable ? (
+                        {item.isAvailable && canOrder ? (
                           <Plus className="size-4" aria-hidden="true" />
                         ) : (
                           <Check className="size-4" aria-hidden="true" />
                         )}
                         <span className="hidden sm:inline">
-                          {item.isAvailable ? "Add to cart" : "Sold out"}
+                          {!canOrder
+                            ? "Unavailable"
+                            : item.isAvailable
+                              ? "Add to cart"
+                              : "Sold out"}
                         </span>
                       </Button>
                     </article>

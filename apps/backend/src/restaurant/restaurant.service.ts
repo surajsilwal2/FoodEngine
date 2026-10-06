@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateRestaurantDto } from './dtos/restaurant.dto.js';
 import { PrismaService } from '@foodengine/database';
 import { UpdateRestaurantDto } from './dtos/update-restaurant.dto.js';
@@ -12,6 +16,8 @@ export class RestaurantService {
       where: { id: dto.tenantId },
     });
     if (!tenant) throw new NotFoundException("Tenant doesn't exists");
+
+    this.validateCoordinatePair(dto.restaurantLat, dto.restaurantLng);
 
     return await this.prisma.restaurant.create({
       data: dto,
@@ -56,9 +62,33 @@ export class RestaurantService {
       where: { id, deletedAt: null },
     });
     if (!restaurant) throw new NotFoundException('Restaurant not found');
+
+    const restaurantLat =
+      dto.restaurantLat === undefined
+        ? restaurant.restaurantLat
+        : dto.restaurantLat;
+    const restaurantLng =
+      dto.restaurantLng === undefined
+        ? restaurant.restaurantLng
+        : dto.restaurantLng;
+    this.validateCoordinatePair(restaurantLat, restaurantLng);
+
     return this.prisma.restaurant.update({
       where: { id },
       data: dto,
     });
   }
+
+
+  private validateCoordinatePair(
+    restaurantLat: number | null | undefined,
+    restaurantLng: number | null | undefined,
+  ) {
+    if ((restaurantLat == null) !== (restaurantLng == null)) {
+      throw new BadRequestException(
+        'Restaurant latitude and longitude must be provided together',
+      );
+    }
+  }
 }
+

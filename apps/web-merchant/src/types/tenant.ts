@@ -28,6 +28,8 @@ export interface MerchantRestaurant {
   tenantId: number;
   name: string;
   location: string;
+  restaurantLat: number | null;
+  restaurantLng: number | null;
   description: string;
   isOpen: boolean;
   createdAt: string;
@@ -37,12 +39,16 @@ export interface CreateRestaurantInput {
   tenantId: number;
   name: string;
   location: string;
+  restaurantLat: number | null;
+  restaurantLng: number | null;
   description: string;
 }
 
 export interface UpdateRestaurantInput {
   name?: string;
   location?: string;
+  restaurantLat?: number | null;
+  restaurantLng?: number | null;
   description?: string;
   isOpen?: boolean;
 }

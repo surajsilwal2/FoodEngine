@@ -1,8 +1,35 @@
 import { io, Socket } from "socket.io-client";
-import { API_URL } from "./api";
+import { API_URL, refreshAccessToken } from "./api";
 
 // Because ES modules are cached, this variable is shared across the entire app — every import of this file sees the same socket value.
 let socket: Socket | null = null;
+let isRecoveringRejectedSocket = false;
+
+// Update the next handshake when the API refreshes an expired access token.
+const handleTokenRefreshed = (event: Event) => {
+  const accessToken = (
+    event as CustomEvent<{ accessToken: string }>
+  ).detail?.accessToken;
+  if (!socket || !accessToken) return;
+
+  socket.auth = { token: `Bearer ${accessToken}` };
+  if (!socket.connected) socket.connect();
+};
+
+// A successful handshake clears the recovery guard for any later expiry.
+const handleSocketConnect = () => {
+  isRecoveringRejectedSocket = false;
+};
+
+// Socket.IO does not reconnect after a server rejects a client. Try one token
+// refresh for that connection; if the server rejects it again, stop rather
+// than creating a new socket ID in an endless reconnect loop.
+const handleSocketDisconnect = (reason: string) => {
+  if (reason === "io server disconnect" && !isRecoveringRejectedSocket) {
+    isRecoveringRejectedSocket = true;
+    void refreshAccessToken().catch(() => undefined);
+  }
+};
 
 export const getSocket = (): Socket => {
   if (
@@ -19,6 +46,9 @@ export const getSocket = (): Socket => {
 
       transports: ["websocket"], // Socket.IO normally tries HTTP long-polling first, then upgrades to WebSocket. This "upgrade" adds latency and complexity. Forcing ['websocket'] skips polling entirely — a single WebSocket connection from the start. Lower latency, less overhead.
     });
+    socket.on("connect", handleSocketConnect);
+    socket.on("disconnect", handleSocketDisconnect);
+    window.addEventListener("auth:token-refreshed", handleTokenRefreshed);
   }
   return socket!;
 };
@@ -31,8 +61,11 @@ export const connectSocket = () => {
 };
 
 export const disconnectSocket = () => {
-  if (socket && socket.connected) {
-    socket.disconnect();
-    socket = null;
-  }
+  if (!socket) return;
+  window.removeEventListener("auth:token-refreshed", handleTokenRefreshed);
+  socket.off("connect", handleSocketConnect);
+  socket.off("disconnect", handleSocketDisconnect);
+  socket.disconnect();
+  socket = null;
+  isRecoveringRejectedSocket = false;
 };

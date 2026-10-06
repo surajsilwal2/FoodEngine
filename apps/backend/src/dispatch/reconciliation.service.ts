@@ -3,12 +3,10 @@ import {
   PrismaService,
   DeliveryStatus,
   OrderStatus,
-  PaymentStatus,
 } from '@foodengine/database';
 import { DispatchGateway } from './dispatch.gateway.js';
 
 
-// "Find any delivery created more than 15 minutes ago that is STILL in SEARCHING status with a COMPLETED payment, cancel the order, and issue an automatic refund."
 @Injectable()
 export class ReconciliationService {
   private readonly logger = new Logger(ReconciliationService.name);
@@ -18,18 +16,26 @@ export class ReconciliationService {
     private readonly dispatchGateway: DispatchGateway,
   ) {}
 
-  // remove for stale orders stuck in SEARCHING for more than 15 minutes
-  async autoRefundStaleDeliveries() {
+  // A lost queue job should alert the restaurant, never cancel/refund food
+  // already being prepared. This is a recovery path for dispatch only.
+  async flagStaleDispatches() {
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
     const staleDeliveries = await this.prisma.delivery.findMany({
       where: {
         status: DeliveryStatus.SEARCHING,
         createdAt: { lte: fifteenMinutesAgo },
+        order: {
+          is: {
+            status: {
+              in: [OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP],
+            },
+          },
+        },
       },
       include: {
         order: {
-          include: { payment: true },
+          select: { id: true, restaurantId: true },
         },
       },
     });
@@ -37,42 +43,43 @@ export class ReconciliationService {
     if (staleDeliveries.length === 0) return;
 
     this.logger.warn(
-      `Found ${staleDeliveries.length} stale deliveries. Processing refunds...`,
+      `Found ${staleDeliveries.length} stale dispatches. Alerting restaurants...`,
     );
 
     for (const delivery of staleDeliveries) {
       try {
-        await this.prisma.$transaction(async (tx) => {
-          await tx.delivery.update({
-            where: { id: delivery.id },
-            data: { status: DeliveryStatus.FAILED },
-          });
-
-          await tx.order.update({
-            where: { id: delivery.orderId },
-            data: { status: OrderStatus.CANCELLED },
-          });
-
-          if (delivery.order.payment) {
-            await tx.payment.update({
-              where: { id: delivery.order.payment.id },
-              data: { status: PaymentStatus.REFUNDED },
-            });
-          }
+        const update = await this.prisma.delivery.updateMany({
+          where: {
+            id: delivery.id,
+            status: DeliveryStatus.SEARCHING,
+            driverProfileId: null,
+          },
+          data: { status: DeliveryStatus.FAILED },
         });
+        if (update.count !== 1) continue;
 
+        const message =
+          'Driver search is delayed. The order is still being prepared; retry dispatch or arrange another pickup.';
+        this.dispatchGateway.notifyRestaurantOrderChanged(
+          delivery.order.restaurantId,
+          {
+            type: 'dispatch_attention',
+            orderId: delivery.orderId,
+            deliveryStatus: DeliveryStatus.FAILED,
+            message,
+          },
+        );
         this.dispatchGateway.notifyOrderStatus(delivery.orderId, {
-          status: 'ORDER_CANCELLED',
-          message:
-            'Order timed out searching for a driver. Automated refund processed.',
+          deliveryStatus: DeliveryStatus.FAILED,
+          dispatchAttention: true,
         });
 
         this.logger.log(
-          `Auto-refunded stale Delivery #${delivery.id} and Order #${delivery.orderId}`,
+          `Flagged stale Delivery #${delivery.id} for merchant recovery`,
         );
       } catch (error) {
         this.logger.error(
-          `Failed to auto-refund Delivery #${delivery.id}`,
+          `Failed to flag stale Delivery #${delivery.id}`,
           error,
         );
       }

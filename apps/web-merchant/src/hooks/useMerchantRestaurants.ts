@@ -13,6 +13,10 @@ export const merchantRestaurantsKey = (tenantId: number) => [
   tenantId,
 ];
 
+/**
+ * Reads the authorized management list, including coordinates and closed
+ * state. A null tenant disables the request until membership selection ends.
+ */
 export function useMerchantRestaurants(tenantId: number | null) {
   return useQuery<MerchantRestaurant[]>({
     queryKey: ["merchant-restaurants", tenantId],
@@ -22,6 +26,7 @@ export function useMerchantRestaurants(tenantId: number | null) {
   });
 }
 
+/** Creates a location and refreshes only the owning tenant's list. */
 export function useCreateRestaurant() {
   const queryClient = useQueryClient();
 
@@ -35,6 +40,7 @@ export function useCreateRestaurant() {
   });
 }
 
+/** Updates a location and refreshes its tenant list so open/coordinate data stays current. */
 export function useUpdateRestaurant() {
   const queryClient = useQueryClient();
 

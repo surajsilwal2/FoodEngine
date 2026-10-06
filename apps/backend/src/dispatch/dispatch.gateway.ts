@@ -50,15 +50,18 @@ export class DispatchGateway
         role: UserRole;
       }>(token);  // verifies if token is legit or not.
         
-        // attach the verified user date to socket's memory
+        // attach the verified user data to socket's memory
       client.data.user = {
         userId: payload.sub,
         email: payload.email,
         role: payload.role,
       };
       this.logger.log(`Authenticated dispatch socket ${client.id}`);
-    } catch {
-      this.logger.warn(`Rejected unauthenticated dispatch socket ${client.id}`);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Unknown auth error';
+      this.logger.warn(
+        `Rejected unauthenticated dispatch socket ${client.id}: ${reason}`,
+      );
       client.disconnect(true); // if not legit, remove the user
     }
   }
@@ -116,6 +119,49 @@ export class DispatchGateway
     return { event: 'subscribed', room: roomName };
   }
 
+  // Merchant clients may join only restaurant rooms covered by their tenant
+  // membership; restaurant IDs supplied by clients are never trusted alone.
+  @SubscribeMessage('restaurant:subscribe')
+  async handleRestaurantSubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { restaurantId: number },
+  ) {
+    const user = this.requireAuthenticatedUser(client);
+    if (!Number.isSafeInteger(data?.restaurantId) || data.restaurantId <= 0) {
+      throw new ForbiddenException('A valid restaurant is required');
+    }
+
+    const restaurant = await this.prisma.restaurant.findFirst({
+      where: { id: data.restaurantId, deletedAt: null },
+      select: { tenantId: true },
+    });
+    if (!restaurant) {
+      throw new ForbiddenException('You cannot subscribe to this restaurant');
+    }
+
+    if (user.role !== UserRole.SYSTEM_ADMIN) {
+      const membership = await this.prisma.tenantMember.findUnique({
+        where: {
+          userId_tenantId: {
+            userId: user.userId,
+            tenantId: restaurant.tenantId,
+          },
+        },
+        select: { role: true },
+      });
+      if (!membership || membership.role !== UserRole.MERCHANT_ADMIN) {
+        throw new ForbiddenException(
+          'You do not manage this restaurant',
+        );
+      }
+    }
+
+    const roomName = `restaurant:${data.restaurantId}`;
+    await client.join(roomName);
+    this.logger.log(`Merchant socket ${client.id} joined ${roomName}`);
+    return { event: 'subscribed', room: roomName };
+  }
+
   // The room key is a driver profile ID, matching the member stored in Redis.
   notifyDriverNewOffer(driverProfileId: number, deliveryData: unknown) {
     const roomName = `driver:${driverProfileId}`;
@@ -132,6 +178,15 @@ export class DispatchGateway
       orderId,
     });
     this.logger.log(`Pushed status update to ${roomName}`);
+  }
+
+  notifyRestaurantOrderChanged(restaurantId: number, eventData: unknown) {
+    const roomName = `restaurant:${restaurantId}`;
+    this.server.to(roomName).emit('restaurant:order_changed', {
+      ...(typeof eventData === 'object' && eventData !== null ? eventData : {}),
+      restaurantId,
+    });
+    this.logger.log(`Pushed order update to ${roomName}`);
   }
 
   private extractToken(client: Socket): string {
