@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { DispatchGateway } from './dispatch.gateway.js';
 import { BullModule } from '@nestjs/bullmq';
 import { DriverModule } from '../driver/driver.module.js';
@@ -14,7 +14,7 @@ import { DispatchService } from './dispatch.service.js';
         removeOnFail: false, // Keep failed jobs for debugging
       },
     }),
-    DriverModule,
+    forwardRef(() => DriverModule), // forwardRef is used to resolve circular dependency between DispatchModule and DriverModule. It allows the modules to reference each other without causing a circular import error.
   ],
 
   providers: [DispatchGateway, DispatchProcessor, DispatchService],

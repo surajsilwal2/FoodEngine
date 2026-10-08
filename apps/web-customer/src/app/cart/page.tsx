@@ -10,7 +10,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { formatCurrency } from "@/lib/format";
 import { api } from "@/lib/api";
 import axios from "axios";
-import { ArrowLeft, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -37,6 +37,12 @@ const CartPage = () => {
   const router = useRouter();
   const createOrderMutation = useCreateOrder();
   const [error, setError] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryPosition, setDeliveryPosition] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [locationMessage, setLocationMessage] = useState("");
   const [isCheckingPendingOrder, setIsCheckingPendingOrder] = useState(false);
   const restaurantIsClosed = restaurantQuery.data?.isOpen === false;
   const restaurantAvailabilityKnown = restaurantQuery.isSuccess;
@@ -51,6 +57,9 @@ const CartPage = () => {
       const order = await createOrderMutation.mutateAsync({
         restaurantId,
         tenantId,
+        deliveryAddress: deliveryAddress.trim(),
+        deliveryLat: deliveryPosition!.lat,
+        deliveryLng: deliveryPosition!.lng,
         items: items.map(({ menuItem, quantity }) => ({
           menuItemId: menuItem.id,
           quantity,
@@ -74,6 +83,24 @@ const CartPage = () => {
           : "We could not place this order. Please try again.",
       );
     }
+  };
+
+  // Browser GPS gives drivers a precise destination; the address remains the
+  // human-readable delivery instruction shown in their active order.
+  const captureDeliveryPosition = () => {
+    setLocationMessage("");
+    if (!navigator.geolocation) {
+      setLocationMessage("Location services are unavailable in this browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setDeliveryPosition({ lat: coords.latitude, lng: coords.longitude });
+        setLocationMessage("Delivery location saved.");
+      },
+      () => setLocationMessage("Allow location access to place a delivery order."),
+      { enableHighAccuracy: true, timeout: 10_000 },
+    );
   };
 
   // If an unpaid order already exists for this cart, resume it rather than
@@ -194,6 +221,36 @@ const CartPage = () => {
             </section>
 
             <aside className="h-fit rounded-card bg-surface p-5 shadow-e1">
+              {!pendingOrderId && (
+                <div className="mb-5 space-y-3 border-b border-line pb-5">
+                  <h2 className="text-sm font-bold">Delivery destination</h2>
+                  <label className="block space-y-1.5 text-sm font-medium">
+                    <span>Address or delivery instructions</span>
+                    <textarea
+                      value={deliveryAddress}
+                      onChange={(event) => setDeliveryAddress(event.target.value)}
+                      maxLength={500}
+                      rows={2}
+                      required
+                      placeholder="Apartment, street, or entry details"
+                      className="w-full rounded-control border border-line bg-surface px-3 py-2.5 font-normal"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={captureDeliveryPosition}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-control border border-line px-3 text-sm font-semibold transition hover:bg-surface-muted"
+                  >
+                    <MapPin className="size-4" aria-hidden="true" />
+                    {deliveryPosition ? "Update map location" : "Use my current location"}
+                  </button>
+                  {locationMessage && (
+                    <p className="text-xs text-ink-muted" role="status">
+                      {locationMessage}
+                    </p>
+                  )}
+                </div>
+              )}
               {restaurantIsClosed && (
                 <Alert>
                   This restaurant is closed. Your cart is saved, but checkout is
@@ -241,7 +298,9 @@ const CartPage = () => {
                     !restaurantAvailabilityKnown ||
                     restaurantIsClosed ||
                     createOrderMutation.isPending ||
-                    isCheckingPendingOrder
+                    isCheckingPendingOrder ||
+                    (!pendingOrderId &&
+                      (!deliveryAddress.trim() || !deliveryPosition))
                   }
                   onClick={() => void goToPayment()}
                 >

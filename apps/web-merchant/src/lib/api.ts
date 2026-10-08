@@ -3,8 +3,13 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const API_BASE_URL = `${API_URL.replace(/\/$/, "")}/api/v1`;
 
+export const ACCESS_TOKEN_KEY = "merchantAccessToken";
+export const REFRESH_TOKEN_KEY = "merchantRefreshToken";
+export const USER_KEY = "merchantUser";
+
 interface RefreshResponse {
   accessToken: string;
+  refreshToken?: string;
 }
 
 type RetriableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
@@ -19,7 +24,7 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("merchantAccessToken");
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -47,15 +52,24 @@ api.interceptors.response.use(
 
     originalRequest._retry = true;
     if (!refreshRequest) {
+      const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
       refreshRequest = axios
-        .post<RefreshResponse>(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+        .post<RefreshResponse>(
+          `${API_BASE_URL}/auth/refresh`,
+          { refreshToken: storedRefreshToken || undefined },
+          { withCredentials: true },
+        )
         .then(({ data }) => {
-          localStorage.setItem("merchantAccessToken", data.accessToken);
+          localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
+          if (data.refreshToken) {
+            localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+          }
           return data.accessToken;
         })
         .catch((refreshError: unknown) => {
-          localStorage.removeItem("merchantAccessToken");
-          localStorage.removeItem("merchantUser");
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
           window.dispatchEvent(new Event("merchant:session-expired"));
           throw refreshError;
         })

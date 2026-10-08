@@ -82,6 +82,36 @@ async function main() {
   });
   console.log(`✅ Approved merchant application seeded for ${adminUser.email}`);
 
+  const driverPassword = process.env.SEED_DRIVER_PASSWORD ?? 'ChangeMe123!';
+  const driverUser = await prisma.user.upsert({
+    where: { email: 'driver@foodengine.local' },
+    update: { userRole: UserRole.DRIVER },
+    create: {
+      name: 'Sam Driver',
+      email: 'driver@foodengine.local',
+      passwordHash: await bcrypt.hash(driverPassword, 12),
+      userRole: UserRole.DRIVER,
+    },
+  });
+
+  await prisma.driverProfile.upsert({
+    where: { userId: driverUser.id },
+    update: {
+      licenseNumber: 'FE-DRIVER-001',
+      vehicleDetails: 'Black scooter',
+      isApproved: true,
+      isOnline: false,
+    },
+    create: {
+      userId: driverUser.id,
+      licenseNumber: 'FE-DRIVER-001',
+      vehicleDetails: 'Black scooter',
+      isApproved: true,
+      isOnline: false,
+    },
+  });
+  console.log(`✅ Approved driver seeded for ${driverUser.email}`);
+
   // Menu prices are in Nepali Rupees (NPR).
   const restaurants = [
     {

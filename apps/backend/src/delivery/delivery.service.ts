@@ -224,7 +224,14 @@ export class DeliveryService {
         order: {
           include: {
             items: true,
-            restaurant: { select: { name: true, location: true } },
+            restaurant: {
+              select: {
+                name: true,
+                location: true,
+                restaurantLat: true,
+                restaurantLng: true,
+              },
+            },
             customer: { select: { name: true } },
           },
         },

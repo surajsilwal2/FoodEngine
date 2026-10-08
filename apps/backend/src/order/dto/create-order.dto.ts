@@ -3,8 +3,12 @@ import {
   IsArray,
   IsInt,
   IsNotEmpty,
+  IsNumber,
   Min,
+  Max,
+  MaxLength,
   ValidateNested,
+  IsString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -36,4 +40,19 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  deliveryAddress: string;
+
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-90)
+  @Max(90)
+  deliveryLat: number;
+
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-180)
+  @Max(180)
+  deliveryLng: number;
 }

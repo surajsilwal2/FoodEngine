@@ -16,6 +16,9 @@ interface OrderPayloadItem {
 interface CreateOrderPayload {
   restaurantId: number;
   tenantId: number;
+  deliveryAddress: string;
+  deliveryLat: number;
+  deliveryLng: number;
   items: OrderPayloadItem[];
 }
 

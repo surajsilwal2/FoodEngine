@@ -194,6 +194,9 @@ model Order {
   tenantId     Int // Explicit Tenant Isolation Key
   customerId   Int
   restaurantId Int
+  deliveryAddress String?
+  deliveryLat     Float?
+  deliveryLng     Float?
   total        Decimal     @db.Decimal(10, 2)
   status       OrderStatus @default(PENDING)
   deletedAt    DateTime?

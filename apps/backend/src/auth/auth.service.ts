@@ -24,10 +24,7 @@ export class AuthService {
   // generates accesstoken using jwtservice and refreshtoken
   private async generateTokens(userId: number, email: string, role:UserRole,  family: string) {
     const payload = { sub: userId, email, role };
-    const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_ACCESS_SECRET,
-      expiresIn: '15m',
-    });
+    const accessToken = this.jwtService.sign(payload);
     const rawRefreshToken = crypto.randomBytes(40).toString('hex');
     const tokenHash = this.hashToken(rawRefreshToken);
 
@@ -101,7 +98,12 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.email, user.userRole, family);
 
     return {
-      user: { id: user.id, email: user.email, name: user.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        userRole: user.userRole,
+      },
       tokens,
     };
   }
@@ -137,8 +139,30 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // while refreshing or token rotation if isRevoked is already set to true means it is already revoked, then update all the family by setting isRevoked === true. 
+    // If the token is already revoked, check if it was rotated very recently (within 30 seconds).
+    // In real systems, concurrent requests or network jitter may cause multiple requests to arrive with
+    // the same refresh token before the client stores the new one.
     if (tokenRecord?.isRevoked) {
+      const timeSinceRevocation = Date.now() - new Date(tokenRecord.updatedAt).getTime();
+      if (timeSinceRevocation <= 30000) {
+        const latestActiveToken = await this.prisma.refreshToken.findFirst({
+          where: { family: tokenRecord.family, isRevoked: false },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (latestActiveToken && new Date() < latestActiveToken.expiresAt) {
+          const payload = {
+            sub: tokenRecord.user.id,
+            email: tokenRecord.user.email,
+            role: tokenRecord.user.userRole,
+          };
+          const accessToken = this.jwtService.sign(payload);
+          return {
+            accessToken,
+            refreshToken: rawRefreshToken,
+          };
+        }
+      }
+
       await this.prisma.refreshToken.updateMany({
         where: { family: tokenRecord.family },
         data: { isRevoked: true },

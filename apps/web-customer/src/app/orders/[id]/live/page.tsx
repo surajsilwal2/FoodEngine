@@ -16,6 +16,7 @@ import {
   Bike,
   Home,
   AlertTriangle,
+  MapPin,
 } from "lucide-react";
 
 const ORDER_STEPS = [
@@ -34,6 +35,7 @@ export default function LiveOrderPage() {
 
   const {
     data: order,
+    driverLocation,
     isLoading,
     isError,
   } = useLiveOrder(orderId, isAuthenticated);
@@ -118,6 +120,42 @@ export default function LiveOrderPage() {
           <p className="mt-4 text-sm font-semibold text-brand">
             {STATUS_LABELS[order.status] ?? currentStep.label}
           </p>
+        )}
+
+        {order.status === "PICKED_UP" && (
+          <section className="mt-6 border-y border-line py-5" aria-label="Driver location">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-sm font-bold">
+                  <MapPin className="size-4 text-brand" aria-hidden="true" />
+                  Driver location
+                </h2>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {driverLocation
+                    ? `Updated ${new Date(driverLocation.updatedAt).toLocaleTimeString()}`
+                    : "Waiting for the driver's next location update…"}
+                </p>
+              </div>
+              {driverLocation && (
+                <a
+                  href={`https://www.openstreetmap.org/?mlat=${driverLocation.lat}&mlon=${driverLocation.lng}#map=16/${driverLocation.lat}/${driverLocation.lng}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-semibold text-brand hover:underline"
+                >
+                  Open map
+                </a>
+              )}
+            </div>
+            {driverLocation && (
+              <iframe
+                title="Live driver position map"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${driverLocation.lng - 0.01}%2C${driverLocation.lat - 0.01}%2C${driverLocation.lng + 0.01}%2C${driverLocation.lat + 0.01}&layer=mapnik&marker=${driverLocation.lat}%2C${driverLocation.lng}`}
+                className="mt-4 h-64 w-full border-0 sm:h-80"
+                loading="lazy"
+              />
+            )}
+          </section>
         )}
 
         {isCancelled ? (

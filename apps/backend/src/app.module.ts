@@ -15,12 +15,18 @@ import { PaymentsModule } from './payments/payments.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { DispatchModule } from './dispatch/dispatch.module.js';
 import { DeliveryModule } from './delivery/delivery.module.js';
+import { resolve } from 'node:path';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      // envFilePath is an array of paths to .env files. The first path is the .env file in the current working directory, and the second path is the .env file in the parent directory. This allows for environment variables to be loaded from multiple locations.
+      envFilePath: [
+        resolve(process.cwd(), '.env'),
+        resolve(process.cwd(), '../../.env'),
+      ],
     }),
     BullModule.forRoot({
       connection: {

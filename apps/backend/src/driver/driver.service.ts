@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,12 +15,15 @@ import {
 import { PrismaService, UserRole } from '@foodengine/database';
 import { RedisService } from '../redis/redis.service.js';
 import { updateLocationDto } from './dto/update-driver.dto.js';
+import { DispatchGateway } from '../dispatch/dispatch.gateway.js';
 
 @Injectable()
 export class DriverService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redisService: RedisService,
+    @Inject(forwardRef(() => DispatchGateway))
+    private readonly dispatchGateway: DispatchGateway,
   ) {}
 
   async applyForDrivers(userId: number, dto: ApplyDriverDto) {
@@ -200,6 +205,25 @@ export class DriverService {
       // A location received while offline is retained in Postgres, but never
       // exposed to dispatch as an available-driver location.
       await redis.zrem('drivers:locations', profile.id.toString());
+    }
+
+    // Share precise GPS only for the driver's picked-up order; order-room
+    // authorization ensures only that order's customer receives the update.
+    const pickedUpDelivery = await this.prisma.delivery.findFirst({
+      where: {
+        driverProfileId: profile.id,
+        status: 'PICKED_UP',
+      },
+      select: { orderId: true },
+    });
+    if (pickedUpDelivery) {
+      this.dispatchGateway.notifyOrderStatus(pickedUpDelivery.orderId, {
+        driverLocation: {
+          lat: dto.lat,
+          lng: dto.lng,
+          updatedAt: updatedProfile.updatedAt,
+        },
+      });
     }
 
     return updatedProfile;
