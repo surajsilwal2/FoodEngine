@@ -20,6 +20,17 @@ export interface Order {
     | "DELIVERED"
     | "CANCELLED";
   createdAt: string;
+  deliveryAddress?: string | null;
+  deliveryLat?: number | null;
+  deliveryLng?: number | null;
+  delivery?: {
+    status: string;
+    driver: {
+      currentLat: number | null;
+      currentLong: number | null;
+      updatedAt: string;
+    } | null;
+  } | null;
   items: OrderItem[];
   restaurant: { id?: number; name: string };
 }

@@ -131,6 +131,10 @@ export class TenantService {
           where: { id: applicationId },
           data: { tenantId: tenant.id },
         });
+        await tx.user.update({
+          where: { id: application.applicantId },
+          data: { userRole: UserRole.MERCHANT_ADMIN },
+        });
       }
 
       return tx.merchantApplication.findUniqueOrThrow({

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ClipboardList,
+  Bike,
   ShoppingBag,
   Store,
   UtensilsCrossed,
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/orders", label: "Orders", icon: ClipboardList },
   // Entry point for the merchant onboarding flow.
   { href: "/merchant-application", label: "Sell with us", icon: Store },
+  { href: "/driver-application", label: "Drive with us", icon: Bike },
 ];
 
 /**

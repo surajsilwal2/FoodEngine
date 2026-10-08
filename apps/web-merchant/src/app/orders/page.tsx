@@ -69,7 +69,9 @@ export default function MerchantOrdersPage() {
     activeTenant?.tenantId ?? null,
   );
   const restaurants = restaurantsQuery.data ?? [];
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<
+    number | null
+  >(null);
   const activeRestaurant =
     restaurants.find((restaurant) => restaurant.id === selectedRestaurantId) ??
     (restaurants.length === 1 ? restaurants[0] : null);
@@ -98,7 +100,14 @@ export default function MerchantOrdersPage() {
     ) {
       router.replace("/");
     }
-  }, [access.isError, access.isMerchant, access.isResolving, isAuthenticated, isReady, router]);
+  }, [
+    access.isError,
+    access.isMerchant,
+    access.isResolving,
+    isAuthenticated,
+    isReady,
+    router,
+  ]);
 
   const orders = ordersQuery.data ?? [];
   const visibleOrders = orders.filter((order) =>
@@ -112,12 +121,17 @@ export default function MerchantOrdersPage() {
     (!!activeTenant && restaurantsQuery.isPending) ||
     (!!restaurantId && ordersQuery.isPending);
 
-  const updateOrder = (order: MerchantOrder, newStatus: MerchantOrderStatus) => {
+  const updateOrder = (
+    order: MerchantOrder,
+    newStatus: MerchantOrderStatus,
+  ) => {
     if (!restaurantId) return;
     setActionError("");
     updateStatus.mutate(
       { orderId: order.id, newStatus, restaurantId },
-      { onError: (error: unknown) => setActionError(getApiErrorMessage(error)) },
+      {
+        onError: (error: unknown) => setActionError(getApiErrorMessage(error)),
+      },
     );
   };
 
@@ -126,7 +140,9 @@ export default function MerchantOrdersPage() {
     setActionError("");
     retryDispatch.mutate(
       { orderId: order.id, restaurantId },
-      { onError: (error: unknown) => setActionError(getApiErrorMessage(error)) },
+      {
+        onError: (error: unknown) => setActionError(getApiErrorMessage(error)),
+      },
     );
   };
 
@@ -144,7 +160,11 @@ export default function MerchantOrdersPage() {
             </p>
           </div>
           {restaurantId && (
-            <div role="tablist" aria-label="Order view" className="flex gap-1 border-b border-line">
+            <div
+              role="tablist"
+              aria-label="Order view"
+              className="flex gap-1 border-b border-line"
+            >
               {(["ACTIVE", "HISTORY"] as const).map((tab) => (
                 <button
                   key={tab}
@@ -189,7 +209,9 @@ export default function MerchantOrdersPage() {
               }}
               className="w-full rounded-control border border-line bg-surface px-3 py-2.5 font-normal"
             >
-              <option value="" disabled>Choose a business</option>
+              <option value="" disabled>
+                Choose a business
+              </option>
               {merchantTenants.map((tenant) => (
                 <option key={tenant.tenantId} value={tenant.tenantId}>
                   {tenant.tenantName}
@@ -200,7 +222,10 @@ export default function MerchantOrdersPage() {
         ) : restaurantsQuery.isError ? (
           <div className="mt-8 space-y-3">
             <Alert>{getApiErrorMessage(restaurantsQuery.error)}</Alert>
-            <Button variant="secondary" onClick={() => void restaurantsQuery.refetch()}>
+            <Button
+              variant="secondary"
+              onClick={() => void restaurantsQuery.refetch()}
+            >
               Retry loading restaurants
             </Button>
           </div>
@@ -215,10 +240,14 @@ export default function MerchantOrdersPage() {
             <span>Select restaurant</span>
             <select
               value={selectedRestaurantId ?? ""}
-              onChange={(event) => setSelectedRestaurantId(Number(event.target.value))}
+              onChange={(event) =>
+                setSelectedRestaurantId(Number(event.target.value))
+              }
               className="w-full rounded-control border border-line bg-surface px-3 py-2.5 font-normal"
             >
-              <option value="" disabled>Choose a location</option>
+              <option value="" disabled>
+                Choose a location
+              </option>
               {restaurants.map((restaurant) => (
                 <option key={restaurant.id} value={restaurant.id}>
                   {restaurant.name}
@@ -230,14 +259,17 @@ export default function MerchantOrdersPage() {
           <>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-y border-line py-3">
               <p className="text-sm text-ink-muted">
-                Restaurant: <strong className="text-ink">{activeRestaurant.name}</strong>
+                Restaurant:{" "}
+                <strong className="text-ink">{activeRestaurant.name}</strong>
               </p>
               {restaurants.length > 1 && (
                 <label className="flex items-center gap-2 text-sm">
                   <span className="sr-only">Selected restaurant</span>
                   <select
                     value={activeRestaurant.id}
-                    onChange={(event) => setSelectedRestaurantId(Number(event.target.value))}
+                    onChange={(event) =>
+                      setSelectedRestaurantId(Number(event.target.value))
+                    }
                     className="rounded-control border border-line bg-surface px-3 py-2"
                   >
                     {restaurants.map((restaurant) => (
@@ -254,13 +286,18 @@ export default function MerchantOrdersPage() {
             {ordersQuery.isError ? (
               <div className="mt-6 space-y-3">
                 <Alert>{getApiErrorMessage(ordersQuery.error)}</Alert>
-                <Button variant="secondary" onClick={() => void ordersQuery.refetch()}>
+                <Button
+                  variant="secondary"
+                  onClick={() => void ordersQuery.refetch()}
+                >
                   Retry loading orders
                 </Button>
               </div>
             ) : visibleOrders.length === 0 ? (
               <EmptyOrders
-                title={view === "ACTIVE" ? "No active orders" : "No order history"}
+                title={
+                  view === "ACTIVE" ? "No active orders" : "No order history"
+                }
                 description={
                   view === "ACTIVE"
                     ? "Paid orders will appear here as soon as customers complete checkout."
@@ -268,7 +305,10 @@ export default function MerchantOrdersPage() {
                 }
                 action={
                   view === "ACTIVE" ? (
-                    <Button variant="secondary" onClick={() => void ordersQuery.refetch()}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => void ordersQuery.refetch()}
+                    >
                       Refresh orders
                     </Button>
                   ) : undefined
@@ -280,7 +320,8 @@ export default function MerchantOrdersPage() {
                   const canCancel =
                     order.delivery?.status !== "ASSIGNED" &&
                     order.delivery?.status !== "PICKED_UP";
-                  const isSaving = updateStatus.isPending || retryDispatch.isPending;
+                  const isSaving =
+                    updateStatus.isPending || retryDispatch.isPending;
 
                   return (
                     <li key={order.id} className="py-5">
@@ -288,60 +329,103 @@ export default function MerchantOrdersPage() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <h2 className="font-semibold">Order #{order.id}</h2>
-                            <StatusBadge label={humanizeStatus(order.status)} tone={
-                              order.status === "CANCELLED" ? "danger" :
-                              order.status === "DELIVERED" ? "success" :
-                              order.status === "CONFIRMED" ? "warning" : "progress"
-                            } />
+                            <StatusBadge
+                              label={humanizeStatus(order.status)}
+                              tone={
+                                order.status === "CANCELLED"
+                                  ? "danger"
+                                  : order.status === "DELIVERED"
+                                    ? "success"
+                                    : order.status === "CONFIRMED"
+                                      ? "warning"
+                                      : "progress"
+                              }
+                            />
                           </div>
                           <p className="mt-1 text-sm text-ink-muted">
-                            {order.customer.name} · {formatDateTime(order.createdAt)}
+                            {order.customer.name} ·{" "}
+                            {formatDateTime(order.createdAt)}
                           </p>
                         </div>
-                        <strong className="text-sm">{formatCurrency(order.total)}</strong>
+                        <strong className="text-sm">
+                          {formatCurrency(order.total)}
+                        </strong>
                       </div>
 
                       <ul className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                         {order.items.map((item) => (
-                          <li key={item.id} className="flex justify-between gap-4">
+                          <li
+                            key={item.id}
+                            className="flex justify-between gap-4"
+                          >
                             <span className="text-ink-muted">
                               {item.quantity} × {item.snapshotName}
                             </span>
                             <span className="shrink-0 font-medium">
-                              {formatCurrency(Number(item.unitPrice) * item.quantity)}
+                              {formatCurrency(
+                                Number(item.unitPrice) * item.quantity,
+                              )}
                             </span>
                           </li>
                         ))}
                       </ul>
 
                       {order.delivery?.status === "FAILED" &&
-                        ["PREPARING", "READY_FOR_PICKUP"].includes(order.status) && (
-                        <Alert className="mt-4">
-                          Driver search needs attention. The order remains in preparation; you can retry matching or arrange another pickup.
-                        </Alert>
-                      )}
+                        ["PREPARING", "READY_FOR_PICKUP"].includes(
+                          order.status,
+                        ) && (
+                          <Alert className="mt-4">
+                            Driver search needs attention. The order remains in
+                            preparation; you can retry matching or arrange
+                            another pickup.
+                          </Alert>
+                        )}
 
                       <div className="mt-4 flex flex-wrap gap-2">
                         {order.status === "CONFIRMED" && (
-                          <Button disabled={isSaving} onClick={() => updateOrder(order, "PREPARING")}>
+                          <Button
+                            disabled={isSaving}
+                            onClick={() => updateOrder(order, "PREPARING")}
+                          >
                             Start preparing
                           </Button>
                         )}
                         {order.status === "PREPARING" && (
-                          <Button disabled={isSaving} onClick={() => updateOrder(order, "READY_FOR_PICKUP")}>
+                          <Button
+                            disabled={isSaving}
+                            onClick={() =>
+                              updateOrder(order, "READY_FOR_PICKUP")
+                            }
+                          >
                             Mark ready for pickup
                           </Button>
                         )}
-                        {["PREPARING", "READY_FOR_PICKUP"].includes(order.status) && order.delivery?.status === "FAILED" && (
-                          <Button variant="secondary" disabled={isSaving} onClick={() => retryOrderDispatch(order)}>
-                            Retry driver search
-                          </Button>
-                        )}
-                        {canCancel && ["CONFIRMED", "PREPARING", "READY_FOR_PICKUP"].includes(order.status) && (
-                          <Button variant="danger" disabled={isSaving} onClick={() => updateOrder(order, "CANCELLED")}>
-                            Cancel order
-                          </Button>
-                        )}
+                        {["PREPARING", "READY_FOR_PICKUP"].includes(
+                          order.status,
+                        ) &&
+                          order.delivery?.status === "FAILED" && (
+                            <Button
+                              variant="secondary"
+                              disabled={isSaving}
+                              onClick={() => retryOrderDispatch(order)}
+                            >
+                              Retry driver search
+                            </Button>
+                          )}
+                        {canCancel &&
+                          [
+                            "CONFIRMED",
+                            "PREPARING",
+                            "READY_FOR_PICKUP",
+                          ].includes(order.status) && (
+                            <Button
+                              variant="danger"
+                              disabled={isSaving}
+                              onClick={() => updateOrder(order, "CANCELLED")}
+                            >
+                              Cancel order
+                            </Button>
+                          )}
                       </div>
                     </li>
                   );

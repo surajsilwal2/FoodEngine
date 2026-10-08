@@ -96,6 +96,9 @@ export class OrderService {
           restaurantId: dto.restaurantId,
           tenantId: dto.tenantId,
           customerId,
+          deliveryAddress: dto.deliveryAddress,
+          deliveryLat: dto.deliveryLat,
+          deliveryLng: dto.deliveryLng,
           total: calculateTotal,
           status: OrderStatus.PENDING,
           items: {
@@ -123,14 +126,31 @@ export class OrderService {
         items: true,
         restaurant: { select: { id: true, name: true } },
         customer: { select: { id: true, name: true } },
+        delivery: {
+          select: {
+            status: true,
+            driver: {
+              select: {
+                currentLat: true,
+                currentLong: true,
+                updatedAt: true,
+              },
+            },
+          },
+        },
       },
     });
     if (!order || order.deletedAt) {
       throw new NotFoundException(`Order #${orderId} not found`);
     }
 
-    if (userGolbalRole === UserRole.SYSTEM_ADMIN || order.customerId === userId)
+    if (userGolbalRole === UserRole.SYSTEM_ADMIN || order.customerId === userId) {
+      // Customer GPS is private until the driver has picked up the order.
+      if (order.delivery && order.delivery.status !== DeliveryStatus.PICKED_UP) {
+        order.delivery.driver = null;
+      }
       return order;
+    }
 
     const member = await this.prisma.tenantMember.findUnique({
       where: {
