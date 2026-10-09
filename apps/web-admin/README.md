@@ -8,4 +8,4 @@ Run the app from the repository root with:
 npm run dev --workspace=web-admin
 ```
 
-The app uses port `3003` and the API at `NEXT_PUBLIC_API_URL`, defaulting to `https://foodengine-backend-api.onrender.com`. Set `NEXT_PUBLIC_API_URL=http://localhost:8080` in `.env.local` to use a local backend instead.
+The app uses port `3003`. The API base URL is the `API_URL` constant in `src/lib/api.ts`, which defaults to `https://foodengine-backend-api.onrender.com`. Change that literal to use a different backend.

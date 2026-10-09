@@ -1,10 +1,12 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 
 // Base API URL pointing to our NestJS backend
-// The deployed API is the default. Set NEXT_PUBLIC_API_URL (for example to
-// http://localhost:8080 in .env.local) to point this app at a local backend.
+//
+// This module runs in the browser, where Next.js only exposes NEXT_PUBLIC_*
+// variables. A plain process.env.API_URL is never populated here, so the literal
+// below is what actually takes effect. Update it to point at another backend.
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://foodengine-backend-api.onrender.com";
+  process.env.API_URL || "https://foodengine-backend-api.onrender.com";
   
 // Nest adds this prefix globally, so every HTTP endpoint is rooted here.
 const API_BASE_URL = `${API_URL.replace(/\/$/, "")}/api/v1`;
