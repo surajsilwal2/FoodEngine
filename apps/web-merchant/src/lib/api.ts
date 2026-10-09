@@ -1,6 +1,9 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// The deployed API is the default. Set NEXT_PUBLIC_API_URL (for example to
+// http://localhost:8080 in .env.local) to point this app at a local backend.
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://foodengine-backend-api.onrender.com";
 const API_BASE_URL = `${API_URL.replace(/\/$/, "")}/api/v1`;
 
 export const ACCESS_TOKEN_KEY = "merchantAccessToken";
