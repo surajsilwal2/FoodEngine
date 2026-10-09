@@ -20,7 +20,7 @@ export default function EmptyState({
       <span className="grid size-12 place-items-center rounded-control bg-surface-muted text-ink-muted">
         {icon}
       </span>
-      <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-ink">
+      <h2 className="mt-4 text-lg font-bold tracking-tight text-ink">
         {title}
       </h2>
       {description && (

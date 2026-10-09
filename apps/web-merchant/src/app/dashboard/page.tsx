@@ -66,7 +66,7 @@ export default function MerchantDashboardPage() {
   return (
     <main className="flex-1 bg-canvas px-5 py-10 sm:px-8">
       <section className="mx-auto max-w-3xl">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <h1 className="text-3xl font-extrabold tracking-tight">
           {user?.name ? `Welcome back, ${user.name}.` : "Welcome back."}
         </h1>
         <p className="mt-2 text-sm leading-6 text-ink-muted">

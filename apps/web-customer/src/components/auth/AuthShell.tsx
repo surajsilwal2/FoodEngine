@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import React from "react";
 import Button from "@/components/ui/Button";
 import { inputClasses } from "@/components/ui/Field";
+import BrandMark from "@/components/layout/BrandMark";
 
 // Auth fields carry a leading icon, so they add extra left padding on top of
 // the shared field styling.
@@ -26,14 +27,11 @@ export function AuthShell({
   return (
     <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-12 sm:px-6">
       {/* Single elevated surface — no border + shadow stacking. */}
-      <section className="w-full max-w-md rounded-card bg-surface p-6 shadow-e3 sm:p-8">
-        <Link
-          href="/"
-          className="font-display text-lg font-semibold tracking-tight text-brand"
-        >
-          FoodEngine
+      <section className="w-full max-w-md rounded-card border border-line bg-surface p-6 shadow-e2 sm:p-8">
+        <Link href="/" className="inline-flex items-center gap-2.5">
+          <BrandMark />
         </Link>
-        <h1 className="mt-6 font-display text-2xl font-semibold tracking-tight text-ink">
+        <h1 className="mt-6 text-2xl font-extrabold tracking-tight text-ink">
           {title}
         </h1>
         <p className="mt-2 text-sm leading-6 text-ink-muted">{description}</p>

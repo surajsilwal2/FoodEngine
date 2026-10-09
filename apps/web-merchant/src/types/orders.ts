@@ -22,5 +22,10 @@ export interface MerchantOrder {
   createdAt: string;
   customer: { id: number; name: string };
   items: MerchantOrderItem[];
-  delivery: { id: number; status: string } | null;
+  delivery: {
+    id: number;
+    status: string;
+    /** Present once a driver has accepted; the handoff column names them. */
+    driver: { vehicleDetails: string; user: { name: string } } | null;
+  } | null;
 }

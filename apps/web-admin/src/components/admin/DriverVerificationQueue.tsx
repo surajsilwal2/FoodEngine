@@ -30,10 +30,10 @@ function DriverRow({ driver }: { driver: AdminDriverProfile }) {
   };
 
   return (
-    <li className="py-5">
+    <li className="rounded-card border border-line bg-surface p-5 shadow-e1">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold">{driver.user.name}</h3>
+          <h3 className="font-bold">{driver.user.name}</h3>
           <p className="mt-1 text-sm text-ink-muted">{driver.user.email}</p>
         </div>
         <StatusBadge
@@ -97,12 +97,21 @@ export default function DriverVerificationQueue({
     <section id="drivers" aria-labelledby="drivers-heading" className="scroll-mt-24">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-brand">Delivery network</p>
-          <h2 id="drivers-heading" className="mt-1 font-display text-xl font-semibold">
+          <p className="text-xs font-bold uppercase tracking-wide text-brand">
+            Delivery network
+          </p>
+          <h2
+            id="drivers-heading"
+            className="mt-1 text-xl font-extrabold tracking-tight"
+          >
             Driver verification
           </h2>
         </div>
-        <div role="tablist" aria-label="Driver profile filter" className="flex gap-1 border-b border-line">
+        <div
+          role="tablist"
+          aria-label="Driver profile filter"
+          className="flex items-center gap-1 rounded-control bg-surface-muted p-1"
+        >
           {([ ["PENDING", "Pending"], ["APPROVED", "Approved"], ["ALL", "All profiles"] ] as const).map(([value, label]) => (
             <button
               key={value}
@@ -110,7 +119,11 @@ export default function DriverVerificationQueue({
               role="tab"
               aria-selected={filter === value}
               onClick={() => setFilter(value)}
-              className={`border-b-2 px-3 py-2 text-sm font-semibold ${filter === value ? "border-brand text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
+              className={`rounded-control px-3.5 py-1.5 text-xs transition ${
+                filter === value
+                  ? "bg-surface font-bold text-ink shadow-e1"
+                  : "font-medium text-ink-muted hover:text-ink"
+              }`}
             >
               {label}
             </button>
@@ -129,11 +142,13 @@ export default function DriverVerificationQueue({
           <Button size="sm" variant="secondary" onClick={onRetry}>Retry drivers</Button>
         </div>
       ) : visibleDrivers.length === 0 ? (
-        <p className="mt-4 border-y border-line py-8 text-sm text-ink-muted">
-          {filter === "PENDING" ? "No driver profiles are waiting for verification." : "No driver profiles match this filter."}
+        <p className="mt-4 rounded-card border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">
+          {filter === "PENDING"
+            ? "No driver profiles are waiting for verification."
+            : "No driver profiles match this filter."}
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-line border-y border-line">
+        <ul className="mt-4 space-y-4">
           {visibleDrivers.map((driver) => <DriverRow key={driver.id} driver={driver} />)}
         </ul>
       )}

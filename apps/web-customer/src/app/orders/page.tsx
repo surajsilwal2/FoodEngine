@@ -18,7 +18,10 @@ const OrdersPage = () => {
   return (
     <main className="flex-1 bg-canvas px-5 py-10 sm:px-8">
       <section className="mx-auto max-w-4xl">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <p className="text-xs font-bold uppercase tracking-wide text-brand">
+          Order history
+        </p>
+        <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
           Your orders
         </h1>
 
@@ -26,7 +29,10 @@ const OrdersPage = () => {
         {!isReady || (isAuthenticated && isLoading) ? (
           <div className="mt-8 space-y-4">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="rounded-card bg-surface p-5 shadow-e1">
+              <div
+                key={item}
+                className="rounded-card border border-line bg-surface p-5 shadow-e1"
+              >
                 <Skeleton className="h-4 w-1/3" />
                 <Skeleton className="mt-3 h-3 w-1/2" />
               </div>
@@ -37,7 +43,7 @@ const OrdersPage = () => {
             Please{" "}
             <Link
               href="/login"
-              className="font-semibold text-brand hover:underline"
+              className="font-bold text-brand hover:underline"
             >
               sign in
             </Link>{" "}
@@ -48,15 +54,15 @@ const OrdersPage = () => {
             We couldn&apos;t load your order history. Please try again.
           </Alert>
         ) : orders?.length ? (
-          <ul className="mt-6 divide-y divide-line">
+          <ul className="mt-6 space-y-4">
             {orders.map((order) => (
               <li key={order.id}>
                 <Link
                   href={`/orders/${order.id}`}
-                  className="group flex flex-wrap items-center justify-between gap-4 py-5"
+                  className="group flex flex-wrap items-center justify-between gap-4 rounded-card border border-line bg-surface p-5 shadow-e1 transition hover:border-brand/40 hover:shadow-e2"
                 >
                   <div className="min-w-0">
-                    <p className="font-semibold text-ink">
+                    <p className="font-bold text-ink">
                       {order.restaurant.name}
                     </p>
                     <p className="mt-1 text-sm text-ink-muted">
@@ -65,7 +71,7 @@ const OrdersPage = () => {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex flex-col items-end gap-1.5">
-                      <span className="text-sm font-semibold text-ink">
+                      <span className="text-sm font-bold text-ink">
                         {formatCurrency(order.total)}
                       </span>
                       <StatusBadge status={order.status} />

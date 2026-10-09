@@ -1,7 +1,13 @@
 import Link from "next/link";
 import React from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "danger"
+  | "success"
+  | "accent";
 export type ButtonSize = "sm" | "md";
 
 // One shared button look keeps primary/secondary actions consistent.
@@ -13,6 +19,9 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   secondary: "border border-line bg-surface text-ink hover:bg-surface-muted",
   ghost: "text-ink-muted hover:bg-surface-muted hover:text-ink",
   danger: "text-danger hover:bg-danger/10",
+  // The order desk gives each cook-line column its own solid action colour.
+  success: "bg-success text-white hover:bg-success-strong",
+  accent: "bg-accent text-white hover:bg-accent-strong",
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {

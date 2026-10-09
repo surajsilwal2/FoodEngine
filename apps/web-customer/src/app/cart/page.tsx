@@ -154,9 +154,7 @@ const CartPage = () => {
         </Link>
 
         <div className="mt-6 flex items-end justify-between gap-4">
-          <h1 className="font-display text-3xl font-semibold tracking-tight">
-            Your cart
-          </h1>
+          <h1 className="text-3xl font-extrabold tracking-tight">Your cart</h1>
           {items.length > 0 && (
             <span className="text-sm text-ink-muted">
               {items.reduce((count, item) => count + item.quantity, 0)} items
@@ -181,7 +179,7 @@ const CartPage = () => {
                   className="flex items-center justify-between gap-4 py-5"
                 >
                   <div className="min-w-0">
-                    <h2 className="truncate font-semibold">{menuItem.name}</h2>
+                    <h2 className="truncate font-bold">{menuItem.name}</h2>
                     <p className="mt-1 text-sm text-ink-muted">
                       {formatCurrency(menuItem.price)} each
                     </p>
@@ -220,7 +218,7 @@ const CartPage = () => {
               ))}
             </section>
 
-            <aside className="h-fit rounded-card bg-surface p-5 shadow-e1">
+            <aside className="h-fit rounded-card border border-line bg-surface p-5 shadow-e1">
               {!pendingOrderId && (
                 <div className="mb-5 space-y-3 border-b border-line pb-5">
                   <h2 className="text-sm font-bold">Delivery destination</h2>

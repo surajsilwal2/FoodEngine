@@ -45,7 +45,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
 
         <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
                 {restaurantQuery.data?.name ?? "Menu"}
             </h1>
             {!isLoading && (
@@ -107,7 +107,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
             categories?.map((category) => (
               <section key={category.id}>
                 <div className="mb-5 flex items-center gap-3">
-                  <h2 className="font-display text-lg font-semibold tracking-tight">
+                  <h2 className="text-lg font-bold tracking-tight">
                     {category.name}
                   </h2>
                   <div className="h-px flex-1 bg-line" />
@@ -117,7 +117,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
                   {category.menuItems.map((item) => (
                     <article
                       key={item.id}
-                      className={`flex min-h-32 justify-between gap-4 rounded-card bg-surface p-5 shadow-e1 transition ${
+                      className={`flex min-h-32 justify-between gap-4 rounded-card border border-line bg-surface p-5 shadow-e1 transition ${
                         item.isAvailable ? "hover:shadow-e2" : "opacity-60"
                       }`}
                     >

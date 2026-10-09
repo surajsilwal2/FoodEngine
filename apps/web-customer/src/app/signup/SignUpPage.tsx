@@ -49,7 +49,7 @@ const SignUpPage = () => {
   if (!isReady || isRedirecting) {
     return (
       <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-12 sm:px-6">
-        <div className="w-full max-w-md rounded-card bg-surface p-6 shadow-e3 sm:p-8">
+        <div className="w-full max-w-md rounded-card border border-line bg-surface p-6 shadow-e3 sm:p-8">
           <Skeleton className="h-6 w-28" />
           <Skeleton className="mt-6 h-7 w-2/3" />
           <Skeleton className="mt-3 h-4 w-full" />

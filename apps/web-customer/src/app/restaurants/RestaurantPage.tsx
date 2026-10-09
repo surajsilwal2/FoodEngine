@@ -23,7 +23,10 @@ const RestaurantPage = () => {
   return (
     <main className="flex-1 bg-canvas px-5 py-10 sm:px-8">
       <section className="mx-auto max-w-6xl">
-        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+        <p className="text-xs font-bold uppercase tracking-wide text-brand">
+          Order now
+        </p>
+        <h1 className="mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl">
           Restaurants near you
         </h1>
         <p className="mt-2 text-sm text-ink-muted">
@@ -90,7 +93,7 @@ const RestaurantPage = () => {
                 <Link
                   key={restaurant.id}
                   href={`/restaurants/${restaurant.id}`}
-                  className="group flex flex-col rounded-card bg-surface p-5 shadow-e1 transition hover:shadow-e2"
+                  className="group flex flex-col rounded-card border border-line bg-surface p-5 shadow-e1 transition hover:border-brand/40 hover:shadow-e2"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <span className="grid size-10 place-items-center rounded-control bg-brand-soft text-brand">
@@ -108,7 +111,7 @@ const RestaurantPage = () => {
                     </span>
                   </div>
 
-                  <h2 className="mt-5 font-display text-xl font-semibold tracking-tight">
+                  <h2 className="mt-5 text-xl font-bold tracking-tight">
                     {restaurant.name}
                   </h2>
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-ink-muted">
@@ -121,7 +124,7 @@ const RestaurantPage = () => {
                       <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
                       <span className="truncate">{restaurant.location}</span>
                     </span>
-                    <span className="flex shrink-0 items-center gap-1 font-semibold text-brand">
+                    <span className="flex shrink-0 items-center gap-1 font-bold text-brand">
                       View menu
                       <ArrowRight
                         className="size-3.5 transition group-hover:translate-x-1"
