@@ -100,14 +100,18 @@ async function main() {
       licenseNumber: 'FE-DRIVER-001',
       vehicleDetails: 'Black scooter',
       isApproved: true,
-      isOnline: false,
+      isOnline: true,
+      currentLat: 27.7172,
+      currentLong: 85.3240,
     },
     create: {
       userId: driverUser.id,
       licenseNumber: 'FE-DRIVER-001',
       vehicleDetails: 'Black scooter',
       isApproved: true,
-      isOnline: false,
+      isOnline: true,
+      currentLat: 27.7172,
+      currentLong: 85.3240,
     },
   });
   console.log(`✅ Approved driver seeded for ${driverUser.email}`);
@@ -118,6 +122,8 @@ async function main() {
       name: 'Burger King Downtown',
       location: '123 Main Street, Sector 4',
       description: 'Flame-grilled burgers and classic sides downtown.',
+      restaurantLat: 27.7172,
+      restaurantLng: 85.3240,
       categories: [
         {
           name: 'Burgers',
@@ -138,6 +144,8 @@ async function main() {
       name: 'Sunrise Bowl & Juice',
       location: '48 Market Street, Sector 2',
       description: 'Fresh grain bowls, salads, and cold-pressed juices.',
+      restaurantLat: 27.7050,
+      restaurantLng: 85.3150,
       categories: [
         {
           name: 'Fresh Bowls',
@@ -153,6 +161,8 @@ async function main() {
       name: 'Pasta Corner',
       location: '205 River Avenue, Sector 7',
       description: 'Comforting Italian pasta made fresh to order.',
+      restaurantLat: 27.7250,
+      restaurantLng: 85.3350,
       categories: [
         {
           name: 'Pasta',
@@ -177,6 +187,8 @@ async function main() {
           name: restaurantData.name,
           location: restaurantData.location,
           description: restaurantData.description,
+          restaurantLat: restaurantData.restaurantLat,
+          restaurantLng: restaurantData.restaurantLng,
           isOpen: true,
         },
       }));

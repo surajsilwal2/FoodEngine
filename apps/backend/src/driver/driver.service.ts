@@ -243,15 +243,20 @@ export class DriverService {
     // Redis provides a distance-sorted candidate list efficiently. It is not
     // the source of truth for availability, so candidates are checked in
     // Postgres below before any delivery offer is sent.
+    //
+    // The centre keyword is FROMLONLAT. "FROMLONGLAT" is not a Redis keyword,
+    // so the server rejects the entire command with "ERR syntax error" and no
+    // driver offer is ever sent.
+    // GEOSEARCH key FROMLONLAT longitude latitude BYRADIUS radius KM ASC
     const nearbyDriverIds = await redis.geosearch(
       'drivers:locations',
-      'FROMLONGLAT',
+      'FROMLONLAT',
       restaurantLng,
       restaurantLat,
       'BYRADIUS',
       radiusKm,
-      'km',
-      'ASC', // return nearest drivers first
+      'KM',
+      'ASC',
     );
     const orderedProfileIds = (nearbyDriverIds as string[])
       .map((id) => Number.parseInt(id, 10))

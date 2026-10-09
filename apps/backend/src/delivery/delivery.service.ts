@@ -153,6 +153,15 @@ export class DeliveryService {
       );
     }
 
+    // The order status the driver's action implies, and the order states it may
+    // legitimately advance from. A driver is never blocked by the merchant
+    // forgetting to press "Mark ready for pickup": collecting the food is valid
+    // while the order is still PREPARING, and completing it is valid from either
+    // PICKED_UP or READY_FOR_PICKUP.
+    const nextOrderStatus = this.getOrderStatusForDeliveryStatus(newStatus);
+    const allowedPreviousOrderStatuses =
+      this.getAllowedPreviousOrderStatuses(newStatus);
+
     const updatedDelivery = await this.prisma.$transaction(async (tx) => {
       // Check the old status again inside the write to prevent concurrent
       // requests from applying two status changes at once.
@@ -168,24 +177,18 @@ export class DeliveryService {
         throw new BadRequestException('Delivery status has already changed');
       }
 
-      const orderStatus = this.getOrderStatusForDeliveryStatus(newStatus);
-      if (orderStatus) {
-        const expectedOrderStatus = this.getExpectedOrderStatus(newStatus);
-        if (!expectedOrderStatus) {
-          throw new BadRequestException('Invalid delivery status');
-        }
-
+      if (nextOrderStatus) {
         // Keep the customer-facing order status in sync with the driver flow.
         const orderUpdate = await tx.order.updateMany({
           where: {
             id: delivery.orderId,
-            status: expectedOrderStatus,
+            status: { in: allowedPreviousOrderStatuses },
           },
-          data: { status: orderStatus },
+          data: { status: nextOrderStatus },
         });
         if (orderUpdate.count !== 1) {
           throw new BadRequestException(
-            'Order status does not match the delivery status',
+            'This order can no longer be updated from the driver app',
           );
         }
       }
@@ -195,11 +198,25 @@ export class DeliveryService {
       });
     });
 
-    // Send the event after the database update has been committed.
+    const resultingOrderStatus = nextOrderStatus ?? delivery.order.status;
+
+    // Send the events after the database update has been committed.
     this.dispatchGateway.notifyOrderStatus(delivery.orderId, {
+      status: resultingOrderStatus,
       deliveryStatus: newStatus,
       updatedAt: updatedDelivery.updatedAt,
     });
+    // The merchant desk must learn about pickup and delivery immediately instead
+    // of waiting for its polling interval to become fresh.
+    this.dispatchGateway.notifyRestaurantOrderChanged(
+      delivery.order.restaurantId,
+      {
+        type: 'delivery_status_changed',
+        orderId: delivery.orderId,
+        status: resultingOrderStatus,
+        deliveryStatus: newStatus,
+      },
+    );
 
     return updatedDelivery;
   }
@@ -247,15 +264,21 @@ export class DeliveryService {
   }
 
   private getOrderStatusForDeliveryStatus(status: DeliveryStatus) {
-    if (status === DeliveryStatus.PICKED_UP) return OrderStatus.PICKED_UP ;
+    if (status === DeliveryStatus.PICKED_UP) return OrderStatus.PICKED_UP;
     if (status === DeliveryStatus.DELIVERED) return OrderStatus.DELIVERED;
     return null;
   }
 
-  private getExpectedOrderStatus(status: DeliveryStatus) {
-    if (status === DeliveryStatus.PICKED_UP)
-      return OrderStatus.READY_FOR_PICKUP;
-    if (status === DeliveryStatus.DELIVERED) return OrderStatus.PICKED_UP;
-    return undefined;
+  // Order states a delivery status change may advance from. Being permissive
+  // keeps the driver's progress independent of the merchant's own
+  // "ready for pickup" step, which is advisory rather than a hard gate.
+  private getAllowedPreviousOrderStatuses(status: DeliveryStatus) {
+    if (status === DeliveryStatus.PICKED_UP) {
+      return [OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP];
+    }
+    if (status === DeliveryStatus.DELIVERED) {
+      return [OrderStatus.PICKED_UP, OrderStatus.READY_FOR_PICKUP];
+    }
+    return [];
   }
 }

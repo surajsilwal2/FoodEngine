@@ -16,7 +16,13 @@ import {
   Power,
   Radio,
 } from "lucide-react";
-import { API_URL, api, driverTokenKey, getApiErrorMessage } from "@/lib/api";
+import {
+  API_URL,
+  api,
+  driverRefreshTokenKey,
+  driverTokenKey,
+  getApiErrorMessage,
+} from "@/lib/api";
 
 interface DriverUser {
   id: number;
@@ -185,12 +191,20 @@ export default function DriverHomePage() {
     mutationFn: async (values: { email: string; password: string }) =>
       (await api.post("/auth/login", values)).data as {
         accessToken: string;
+        refreshToken?: string;
         user: DriverUser;
       },
     onSuccess: (data) => {
       // Store the JWT for driver-only HTTP and socket requests.
       localStorage.setItem(driverTokenKey, data.accessToken);
+      // This driver's own refresh token: rotation must never fall back to the
+      // host-wide cookie, which other accounts on this machine also overwrite.
+      if (data.refreshToken) {
+        localStorage.setItem(driverRefreshTokenKey, data.refreshToken);
+      }
       localStorage.setItem("driverUser", JSON.stringify(data.user));
+      // Drop the previous driver's cached profile and active delivery.
+      queryClient.clear();
       setToken(data.accessToken);
       setUser(data.user);
       setLoginError("");
@@ -376,8 +390,13 @@ export default function DriverHomePage() {
 
   const signOut = async () => {
     // Revoke the refresh-token family before removing this browser's driver session.
-    await api.post("/auth/logout", {}).catch(() => undefined);
+    await api
+      .post("/auth/logout", {
+        refreshToken: localStorage.getItem(driverRefreshTokenKey) || undefined,
+      })
+      .catch(() => undefined);
     localStorage.removeItem(driverTokenKey);
+    localStorage.removeItem(driverRefreshTokenKey);
     localStorage.removeItem("driverUser");
     queryClient.clear();
     setToken("");

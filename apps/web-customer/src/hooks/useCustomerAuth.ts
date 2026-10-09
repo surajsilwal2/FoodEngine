@@ -13,6 +13,7 @@ interface LoginPayload {
 
 interface AuthResponse {
   accessToken: string;
+  refreshToken?: string;
   user: {
     id: number;
     email: string;
@@ -67,7 +68,7 @@ export function useRegister() {
       return data;
     },
     onSuccess: (data) => {
-      login(data.accessToken, data.user);
+      login(data.accessToken, data.user, data.refreshToken);
       router.replace("/restaurants");
     },
   });

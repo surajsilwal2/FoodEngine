@@ -60,6 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const onSessionExpired = () => {
       clearStoredSession();
       setUser(null);
+      // Drop cached workspaces so a later sign-in cannot display the previous
+      // account's tenants or application.
+      queryClient.clear();
       const returnTo = `${window.location.pathname}${window.location.search}`;
       const next =
         returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/";
@@ -70,18 +73,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener("merchant:session-expired", onSessionExpired);
     };
-  }, [router, clearStoredSession, isReady]);
+  }, [router, clearStoredSession, isReady, queryClient]);
 
   const setSession = useCallback(
     (accessToken: string, nextUser: MerchantUser, refreshToken?: string) => {
       localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+      // Store this workspace's own refresh token so rotation never falls back to
+      // the host-wide refresh cookie shared with the customer and driver apps.
       if (refreshToken) {
         localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
       }
       localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+      // A new account must never read the previous account's cached workspaces.
+      queryClient.clear();
       setUser(nextUser);
     },
-    [],
+    [queryClient],
   );
 
   const logout = useCallback(async () => {

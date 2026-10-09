@@ -73,7 +73,12 @@ export class AuthController {
     @Res({ passthrough: true }) res: express.Response,
     @Body() body: RefreshTokenDto,
   ) {
-    const rawRefreshToken = req.cookies?.refreshToken || body.refreshToken;
+    // The body token always wins. Each app keeps its own refresh token in its
+    // own origin's storage, while the refresh cookie is shared by every app
+    // served from the same host (cookies ignore the port). Preferring the cookie
+    // lets the last account that signed in on this host silently sign another
+    // workspace in as the wrong user.
+    const rawRefreshToken = body.refreshToken || req.cookies?.refreshToken;
     if (!rawRefreshToken)
       throw new UnauthorizedException('Refresh token missing');
 
@@ -94,7 +99,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: express.Response,
     @Body() body: RefreshTokenDto,
   ) {
-    const refreshToken = req.cookies?.refreshToken || body.refreshToken;
+    // Same precedence as refresh: revoke the token the caller actually owns.
+    const refreshToken = body.refreshToken || req.cookies?.refreshToken;
     if (refreshToken) {
       await this.authService.logout(refreshToken);
     }

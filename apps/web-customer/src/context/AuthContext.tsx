@@ -1,6 +1,7 @@
 "use client";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
-import { api } from "@/lib/api";
+import { REFRESH_TOKEN_KEY, api } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import React, {
   createContext,
@@ -21,7 +22,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string, user: User) => void;
+  login: (token: string, user: User, refreshToken?: string) => void;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   /**
@@ -61,6 +62,7 @@ export function AuthContextProvider({
   const [{ user, token }, dispatch] = useReducer(authReducer, INITIAL_AUTH_STATE);
   const [isReady, setIsReady] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Read persisted browser state after mount to keep server rendering storage-free.
   const restoreSession = useEffectEvent(() => {
@@ -87,6 +89,9 @@ export function AuthContextProvider({
   });
 
   const expireSession = useEffectEvent(() => {
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    // Drop cached orders so a later sign-in cannot show the previous account's.
+    queryClient.clear();
     dispatch({ type: "session-cleared" });
     disconnectSocket();
   });
@@ -111,18 +116,31 @@ export function AuthContextProvider({
     };
   }, [router]);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = (newToken: string, newUser: User, newRefreshToken?: string) => {
     localStorage.setItem("accessToken", newToken);
+    // Keep this workspace's own refresh token, so token rotation never depends
+    // on the host-wide cookie shared with the merchant and driver apps.
+    if (newRefreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+    }
     localStorage.setItem("user", JSON.stringify(newUser));
+    // Never let a new account read the previous account's cached data.
+    queryClient.clear();
     dispatch({ type: "session-restored", user: newUser, token: newToken });
     connectSocket();
   };
 
   const logout = async () => {
     // Revoke the refresh-token family before clearing the local session.
-    await api.post("/auth/logout").catch(() => null);
+    await api
+      .post("/auth/logout", {
+        refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY) || undefined,
+      })
+      .catch(() => null);
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    queryClient.clear();
     dispatch({ type: "session-cleared" });
     disconnectSocket();
   };

@@ -6,6 +6,8 @@ import { DispatchGateway } from './dispatch.gateway.js';
 import { Job } from 'bullmq';
 import { DispatchSearchJobData, DispatchService } from './dispatch.service.js';
 
+// Each round widens the search radius and, once every driver in range has been
+// offered, doubles as a re-offer opportunity for drivers who have not answered.
 const MAX_SEARCH_ROUNDS = 5;
 const RETRY_DELAY_MS = 15_000;
 
@@ -87,25 +89,43 @@ export class DispatchProcessor extends WorkerHost {
         data.restaurantLng,
         radiusKm,
       );
-    const nextDrivers = nearbyDriverProfileIds
-      .filter((driverId) => !previouslyOffered.has(driverId))
-      .slice(0, 3);
+
+    // Prefer drivers who have not been offered during this ring yet. Once every
+    // available candidate in range has been offered, start a fresh ring over the
+    // drivers who are still available instead of conceding the round: an offer is
+    // a live socket event, so a driver who was disconnected, missed the prompt or
+    // simply did not answer must get another chance before the delivery is
+    // escalated to the restaurant. offeredDriverProfileIds therefore tracks the
+    // current ring only, not the whole search cycle.
+    const unofferedDrivers = nearbyDriverProfileIds.filter(
+      (driverId) => !previouslyOffered.has(driverId),
+    );
+    const isNewRing =
+      unofferedDrivers.length === 0 && nearbyDriverProfileIds.length > 0;
+    const driversToOffer = (
+      isNewRing ? nearbyDriverProfileIds : unofferedDrivers
+    ).slice(0, 3);
 
     const nextJob: DispatchSearchJobData = {
       ...data,
       attemptNumber: data.attemptNumber + 1,
-      offeredDriverProfileIds: [
-        ...previouslyOffered,
-        ...nextDrivers,
-      ],
+      offeredDriverProfileIds: isNewRing
+        ? driversToOffer
+        : [...previouslyOffered, ...driversToOffer],
     };
     await this.dispatchService.enqueueSearch(nextJob, RETRY_DELAY_MS);
 
-    if (nextDrivers.length === 0) {
+    if (driversToOffer.length === 0) {
       this.logger.warn(
-        `No new drivers found within ${radiusKm}km for Delivery #${delivery.id}`,
+        `No available drivers within ${radiusKm}km for Delivery #${delivery.id}`,
       );
       return { status: 'no_new_drivers', radiusKm };
+    }
+
+    if (isNewRing) {
+      this.logger.log(
+        `Offer ring restarted for Delivery #${delivery.id}: re-offering to ${driversToOffer.length} driver(s) within ${radiusKm}km`,
+      );
     }
 
     const offerPayload = {
@@ -118,7 +138,7 @@ export class DispatchProcessor extends WorkerHost {
       message: 'New delivery offer nearby!',
     };
 
-    for (const driverId of nextDrivers) {
+    for (const driverId of driversToOffer) {
       const currentDelivery = await this.prisma.delivery.findUnique({
         where: { id: delivery.id },
         select: { status: true, driverProfileId: true },
@@ -133,9 +153,9 @@ export class DispatchProcessor extends WorkerHost {
     }
 
     this.logger.log(
-      `Sent Delivery #${delivery.id} offers to ${nextDrivers.length} drivers within ${radiusKm}km`,
+      `Sent Delivery #${delivery.id} offers to ${driversToOffer.length} drivers within ${radiusKm}km`,
     );
-    return { status: 'offers_sent', driverProfileIds: nextDrivers };
+    return { status: 'offers_sent', driverProfileIds: driversToOffer };
   }
 
   private async flagDispatchAttention(

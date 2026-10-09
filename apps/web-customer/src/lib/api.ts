@@ -9,7 +9,11 @@ const API_BASE_URL = `${API_URL.replace(/\/$/, "")}/api/v1`;
 
 interface RefreshResponse {
   accessToken: string;
+  refreshToken?: string;
 }
+
+/** This workspace's own refresh token, kept beside the access token. */
+export const REFRESH_TOKEN_KEY = "refreshToken";
 
 type RetriableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
@@ -21,10 +25,19 @@ let refreshRequest: Promise<string> | null = null;
  */
 export function refreshAccessToken(): Promise<string> {
   if (!refreshRequest) {
+    // Send this app's own refresh token explicitly. The refresh cookie is shared
+    // by every app on this host (cookies ignore the port), so relying on it would
+    // sign the customer in as whichever account logged in last.
+    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
     refreshRequest = axios
-      .post<RefreshResponse>(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+      .post<RefreshResponse>(`${API_BASE_URL}/auth/refresh`, {
+        refreshToken: storedRefreshToken || undefined,
+      })
       .then(({ data }) => {
         localStorage.setItem("accessToken", data.accessToken);
+        if (data.refreshToken) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+        }
         window.dispatchEvent(
           new CustomEvent("auth:token-refreshed", {
             detail: { accessToken: data.accessToken },
@@ -35,6 +48,7 @@ export function refreshAccessToken(): Promise<string> {
       .catch((refreshError: unknown) => {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("user");
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
         const returnTo = `${window.location.pathname}${window.location.search}`;
         window.dispatchEvent(
           new CustomEvent("auth:expired", { detail: { returnTo } }),
@@ -49,9 +63,10 @@ export function refreshAccessToken(): Promise<string> {
   return refreshRequest;
 }
 
+// No `withCredentials`: this app authenticates with its own bearer token, and
+// sending the host-wide refresh cookie risks another workspace's session.
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
