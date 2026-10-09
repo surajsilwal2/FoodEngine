@@ -1,40 +1,57 @@
 @import "tailwindcss";
 
 /*
-  Design tokens (Tailwind v4 `@theme`).
+  Design tokens (Tailwind v4 `@theme`) — "Kinetic Gastronomy".
   Every token below generates utilities, e.g. bg-canvas, text-ink, rounded-card,
   shadow-e1. This project uses Tailwind v4, so there are no `@tailwind`
   directives and no JS config file.
+
+  The same token names are shared by apps/web-merchant and apps/web-admin so all
+  FoodEngine surfaces read as one product.
 */
 @theme {
-  /* Typography — bound to the next/font variables set in app/layout.tsx */
+  /* Typography — Plus Jakarta Sans carries every role. Headings are separated
+     by weight (700/800) rather than a second family. `--font-display` is kept
+     as an alias so existing `font-display` call sites stay valid. */
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 
-  /* Colour roles — refined emerald + amber identity, one accent budget */
-  --color-canvas: #f7f5f1;
+  /* Surfaces — a cool, luminous ramp: page → card → recessed */
+  --color-canvas: #faf8ff;
   --color-surface: #ffffff;
-  --color-surface-muted: #f1efe9;
-  --color-ink: #1b1a17;
-  --color-ink-muted: #6c6a63;
-  --color-line: #e6e3dc;
-  --color-brand: #10502f;
-  --color-brand-strong: #0b3a22;
-  --color-brand-soft: #e7f0ea;
-  --color-accent: #ef9f2e;
-  --color-accent-soft: #fdf1dd;
-  --color-success: #16694a;
-  --color-warning: #9a6207;
-  --color-danger: #a4302b;
+  --color-surface-muted: #f2f3ff;
+  --color-surface-dim: #d2d9f4;
 
-  /* Radii */
+  /* Text and hairlines */
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-line-soft: #f1f5f9;
+
+  /* Brand — the one accent, reserved for primary actions and live states */
+  --color-brand: #ff5400;
+  --color-brand-strong: #e04a00;
+  --color-brand-soft: #fff1eb;
+
+  /* Informational lane — handoff, courier and pending states */
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-accent-soft: #eff6ff;
+
+  /* Status — `-strong` variants are the pressed state for solid fills */
+  --color-success: #047857;
+  --color-success-strong: #065f46;
+  --color-warning: #b45309;
+  --color-danger: #e11d48;
+
+  /* Radii — controls are rounded-xl, cards rounded-2xl */
   --radius-control: 0.75rem;
   --radius-card: 1rem;
 
-  /* Elevation — 3 levels. Never stack a hairline border on a wide shadow. */
-  --shadow-e1: 0 1px 2px rgba(27, 26, 23, 0.06);
-  --shadow-e2: 0 10px 26px -14px rgba(27, 26, 23, 0.22);
-  --shadow-e3: 0 22px 50px -26px rgba(16, 80, 47, 0.3);
+  /* Elevation — never stack a hairline border on a wide shadow */
+  --shadow-e1: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-e2: 0 10px 24px -14px rgba(15, 23, 42, 0.22);
+  --shadow-e3: 0 24px 48px -24px rgba(255, 84, 0, 0.3);
 }
 
 @layer base {
@@ -54,6 +71,6 @@
   }
 
   ::selection {
-    background-color: var(--color-accent-soft);
+    background-color: var(--color-brand-soft);
   }
 }

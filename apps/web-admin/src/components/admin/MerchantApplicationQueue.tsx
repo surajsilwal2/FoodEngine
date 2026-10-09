@@ -34,10 +34,10 @@ function ApplicationRow({
   };
 
   return (
-    <li className="py-5">
+    <li className="rounded-card border border-line bg-surface p-5 shadow-e1">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold">{application.businessName}</h3>
+          <h3 className="font-bold">{application.businessName}</h3>
           <p className="mt-1 text-sm text-ink-muted">
             {application.applicant.name} · {application.applicant.email}
           </p>
@@ -105,8 +105,13 @@ export default function MerchantApplicationQueue({
 }) {
   return (
     <section id="applications" aria-labelledby="applications-heading" className="scroll-mt-24">
-      <p className="text-sm font-semibold text-brand">Merchant onboarding</p>
-      <h2 id="applications-heading" className="mt-1 font-display text-xl font-semibold">
+      <p className="text-xs font-bold uppercase tracking-wide text-brand">
+        Merchant onboarding
+      </p>
+      <h2
+        id="applications-heading"
+        className="mt-1 text-xl font-extrabold tracking-tight"
+      >
         Pending applications
       </h2>
 
@@ -121,11 +126,11 @@ export default function MerchantApplicationQueue({
           <Button size="sm" variant="secondary" onClick={onRetry}>Retry applications</Button>
         </div>
       ) : applications.length === 0 ? (
-        <p className="mt-4 border-y border-line py-8 text-sm text-ink-muted">
+        <p className="mt-4 rounded-card border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">
           No merchant applications are waiting for review.
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-line border-y border-line">
+        <ul className="mt-4 space-y-4">
           {applications.map((application) => (
             <ApplicationRow key={application.id} application={application} />
           ))}

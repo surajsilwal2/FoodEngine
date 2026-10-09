@@ -192,7 +192,7 @@ export default function MerchantRestaurantsPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-brand">Workspace</p>
-            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
               Restaurants
             </h1>
             <p className="mt-2 text-sm text-ink-muted">

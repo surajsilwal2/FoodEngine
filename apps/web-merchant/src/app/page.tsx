@@ -36,7 +36,7 @@ export default function EntryPage() {
   return (
     <main className="flex flex-1 items-center justify-center bg-canvas px-5 py-16">
       <section className="w-full max-w-md rounded-card bg-surface p-6 shadow-e1">
-        <h1 className="font-display text-xl font-semibold tracking-tight">
+        <h1 className="text-xl font-extrabold tracking-tight">
           Checking your account…
         </h1>
 

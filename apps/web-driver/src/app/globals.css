@@ -1,23 +1,64 @@
 @import "tailwindcss";
 
+/*
+  Design tokens (Tailwind v4 `@theme`) — "Kinetic Gastronomy".
+  Shared with the other FoodEngine apps, plus `night-*` roles used only by this
+  app: the fleet console is the suite's single dark surface, so it needs its own
+  semantic ramp instead of hardcoded slate values.
+*/
 @theme {
+  /* Typography — Plus Jakarta Sans carries every role. Headings are separated
+     by weight (700/800) rather than a second family. `--font-display` is kept
+     as an alias so existing `font-display` call sites stay valid. */
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
-  --color-canvas: #f5f4ef;
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  /* Surfaces — a cool, luminous ramp: page → card → recessed */
+  --color-canvas: #faf8ff;
   --color-surface: #ffffff;
-  --color-surface-muted: #eeede6;
-  --color-ink: #1b1a17;
-  --color-ink-muted: #6c6a63;
-  --color-line: #e3e1d9;
-  --color-brand: #10502f;
-  --color-brand-strong: #0b3a22;
-  --color-brand-soft: #e7f0ea;
-  --color-accent: #ef9f2e;
-  --color-accent-soft: #fdf1dd;
-  --color-success: #16694a;
-  --color-warning: #9a6207;
-  --color-danger: #a4302b;
-  --radius-control: 0.5rem;
+  --color-surface-muted: #f2f3ff;
+  --color-surface-dim: #d2d9f4;
+
+  /* Text and hairlines */
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-line-soft: #f1f5f9;
+
+  /* Brand — the one accent, reserved for primary actions and live states */
+  --color-brand: #ff5400;
+  --color-brand-strong: #e04a00;
+  --color-brand-soft: #fff1eb;
+
+  /* Informational lane — handoff, courier and pending states */
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-accent-soft: #eff6ff;
+
+  /* Status — `-strong` variants are the pressed state for solid fills */
+  --color-success: #047857;
+  --color-success-strong: #065f46;
+  --color-warning: #b45309;
+  --color-danger: #e11d48;
+
+  /* Night cockpit — the driver console only. `night` is the panel surface,
+     `night-deep` the map canvas, `raised` borders and chips. */
+  --color-night: #0f172a;
+  --color-night-deep: #020617;
+  --color-night-raised: #1e293b;
+  --color-night-ink: #e2e8f0;
+  --color-night-ink-muted: #94a3b8;
+  --color-night-live: #34d399;
+
+  /* Radii — controls are rounded-xl, cards rounded-2xl */
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+
+  /* Elevation — never stack a hairline border on a wide shadow */
+  --shadow-e1: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-e2: 0 10px 24px -14px rgba(15, 23, 42, 0.22);
+  --shadow-e3: 0 24px 48px -24px rgba(255, 84, 0, 0.3);
+  --shadow-hud: 0 18px 40px -20px rgba(2, 6, 23, 0.9);
 }
 
 @layer base {
@@ -30,5 +71,9 @@
     background-color: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background-color: var(--color-brand-soft);
   }
 }

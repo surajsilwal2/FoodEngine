@@ -1,6 +1,9 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Pooled connections (pgbouncer, transaction mode) cannot run migrations,
+  // so Prisma migrates over this direct session connection instead.
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {

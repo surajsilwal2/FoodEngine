@@ -13,7 +13,7 @@ export default function Error(props: {
   return (
     <main className="flex flex-1 items-center justify-center bg-canvas px-5 py-16">
       <section className="w-full max-w-md rounded-card bg-surface p-6 shadow-e1">
-        <h1 className="font-display text-xl font-semibold tracking-tight">
+        <h1 className="text-xl font-extrabold tracking-tight">
           Something went wrong
         </h1>
         <p className="mt-2 text-sm leading-6 text-ink-muted">

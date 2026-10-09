@@ -47,7 +47,7 @@ export default function DriverApplicationPage() {
     <main className="flex-1 bg-canvas px-5 py-10 sm:px-8">
       <section className="mx-auto max-w-2xl">
         <p className="text-sm font-semibold text-brand">Delivery network</p>
-        <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">
+        <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
           Drive with us
         </h1>
         <p className="mt-2 text-sm leading-6 text-ink-muted">
@@ -79,7 +79,7 @@ export default function DriverApplicationPage() {
             )}
 
             {application ? (
-              <section className="rounded-card bg-surface p-5 shadow-e1">
+              <section className="rounded-card border border-line bg-surface p-5 shadow-e1">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="font-display text-lg font-semibold">
                     Application status
@@ -116,7 +116,7 @@ export default function DriverApplicationPage() {
             ) : (
               <form
                 onSubmit={handleSubmit}
-                className="rounded-card bg-surface p-5 shadow-e1"
+                className="rounded-card border border-line bg-surface p-5 shadow-e1"
               >
                 <h2 className="font-display text-lg font-semibold">
                   Driver details

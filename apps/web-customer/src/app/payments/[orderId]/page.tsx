@@ -113,7 +113,7 @@ const PaymentPage = () => {
         ) : (
           <>
             <div className="mt-6">
-              <h1 className="font-display text-3xl font-semibold tracking-tight">
+              <h1 className="text-3xl font-extrabold tracking-tight">
                 Payment
               </h1>
               <p className="mt-2 text-sm text-ink-muted">
@@ -122,7 +122,7 @@ const PaymentPage = () => {
             </div>
 
             {/* Order identity + amount to verify before choosing a method. */}
-            <div className="mt-6 flex items-center justify-between rounded-card bg-surface p-5 shadow-e1">
+            <div className="mt-6 flex items-center justify-between rounded-card border border-line bg-surface p-5 shadow-e1">
               <span className="font-semibold">Order total</span>
               <strong className="text-lg">{formatCurrency(order.total)}</strong>
             </div>

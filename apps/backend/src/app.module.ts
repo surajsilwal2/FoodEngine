@@ -13,6 +13,7 @@ import { DriverModule } from './driver/driver.module.js';
 import { OrderModule } from './order/order.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { RedisModule } from './redis/redis.module.js';
+import { getRedisOptions } from './redis/redis.config.js';
 import { DispatchModule } from './dispatch/dispatch.module.js';
 import { DeliveryModule } from './delivery/delivery.module.js';
 import { resolve } from 'node:path';
@@ -29,10 +30,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       ],
     }),
     BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      },
+      // Same options as the application's Redis client: BullMQ workers run
+      // blocking commands, so they need unlimited retries and the identical
+      // TLS/credential settings.
+      connection: getRedisOptions(),
     }),
     DatabaseModule,
     // Distributed tracing, auto-correlated logs, request/job metrics, error

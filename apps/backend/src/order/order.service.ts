@@ -190,7 +190,20 @@ export class OrderService {
       include: {
         items: true,
         customer: { select: { id: true, name: true } },
-        delivery: { select: { id: true, status: true } },
+        delivery: {
+          select: {
+            id: true,
+            status: true,
+            // The kitchen desk needs to know who is collecting the order so the
+            // handoff column can name the courier instead of showing a bare status.
+            driver: {
+              select: {
+                vehicleDetails: true,
+                user: { select: { name: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

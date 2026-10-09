@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
+import { cardClasses } from "@/components/ui/Card";
 import DriverVerificationQueue from "@/components/admin/DriverVerificationQueue";
 import MerchantApplicationQueue from "@/components/admin/MerchantApplicationQueue";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -62,26 +63,38 @@ export default function AdminDashboardPage() {
       <div className="mx-auto max-w-5xl">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-brand">Platform operations</p>
-            <h1 className="mt-1 font-display text-3xl font-semibold">Admin dashboard</h1>
-            <p className="mt-2 text-sm leading-6 text-ink-muted">
+            <p className="text-xs font-bold uppercase tracking-wide text-brand">
+              Platform operations
+            </p>
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
+              Admin dashboard
+            </h1>
+            <p className="mt-1.5 text-sm leading-6 text-ink-muted">
               Review merchant onboarding and verify delivery partners.
             </p>
           </div>
           <p className="text-sm text-ink-muted">Signed in as {user.name}</p>
         </div>
 
-        <dl className="mt-7 grid grid-cols-2 divide-x divide-line border-y border-line">
-          <div className="py-4 pr-5">
-            <dt className="text-sm text-ink-muted">Pending merchant applications</dt>
-            <dd className="mt-1 font-display text-2xl font-semibold">
-              {applicationsQuery.isPending || applicationsQuery.isError ? "—" : applications.length}
+        <dl className="mt-7 grid gap-4 sm:grid-cols-2">
+          <div className={cardClasses + " p-5"}>
+            <dt className="text-sm font-medium text-ink-muted">
+              Pending merchant applications
+            </dt>
+            <dd className="mt-2 text-3xl font-extrabold tracking-tight">
+              {applicationsQuery.isPending || applicationsQuery.isError
+                ? "—"
+                : applications.length}
             </dd>
           </div>
-          <div className="py-4 pl-5">
-            <dt className="text-sm text-ink-muted">Drivers awaiting verification</dt>
-            <dd className="mt-1 font-display text-2xl font-semibold">
-              {driversQuery.isPending || driversQuery.isError ? "—" : pendingDrivers}
+          <div className={cardClasses + " p-5"}>
+            <dt className="text-sm font-medium text-ink-muted">
+              Drivers awaiting verification
+            </dt>
+            <dd className="mt-2 text-3xl font-extrabold tracking-tight">
+              {driversQuery.isPending || driversQuery.isError
+                ? "—"
+                : pendingDrivers}
             </dd>
           </div>
         </dl>

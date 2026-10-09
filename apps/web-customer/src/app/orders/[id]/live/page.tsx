@@ -108,7 +108,7 @@ export default function LiveOrderPage() {
 
         <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight">
+            <h1 className="text-3xl font-extrabold tracking-tight">
               {order.restaurant.name}
             </h1>
             <p className="mt-1 text-sm text-ink-muted">Order #{order.id}</p>
@@ -245,7 +245,7 @@ export default function LiveOrderPage() {
             </ol>
 
             {/* Item summary */}
-            <div className="rounded-card bg-surface p-5 shadow-e1">
+            <div className="rounded-card border border-line bg-surface p-5 shadow-e1">
               <h2 className="mb-3 text-sm font-bold">Order items</h2>
               <div className="divide-y divide-line text-sm text-ink-muted">
                 {order.items.map((item) => (

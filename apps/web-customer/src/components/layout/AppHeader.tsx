@@ -12,6 +12,7 @@ import {
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { buttonClasses } from "@/components/ui/Button";
+import BrandMark from "./BrandMark";
 
 const NAV_ITEMS = [
   { href: "/restaurants", label: "Restaurants", icon: UtensilsCrossed },
@@ -23,8 +24,8 @@ const NAV_ITEMS = [
 
 /**
  * Shared app header mounted once from the root layout. Owns the primary
- * navigation (Restaurants / Cart / Orders) and the account action so pages no
- * longer repeat their own inconsistent header rows.
+ * navigation, the cart and the account action, so pages never repeat their own
+ * inconsistent header rows.
  */
 export default function AppHeader() {
   const pathname = usePathname();
@@ -40,17 +41,17 @@ export default function AppHeader() {
     pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-surface/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-6">
-          <Link
-            href="/"
-            className="shrink-0 font-display text-base font-semibold tracking-tight text-brand sm:text-lg"
-          >
-            FoodEngine
+    <header className="sticky top-0 z-40 border-b border-line-soft bg-surface/85 backdrop-blur">
+      <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-2 sm:px-8">
+        <div className="flex min-w-0 items-center gap-4">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5">
+            <BrandMark />
           </Link>
 
-          <nav aria-label="Main" className="flex items-center gap-1">
+          <nav
+            aria-label="Main"
+            className="flex items-center gap-1 rounded-control bg-surface-muted p-1"
+          >
             {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
               const active = isActive(href);
               return (
@@ -58,10 +59,10 @@ export default function AppHeader() {
                   key={href}
                   href={href}
                   aria-current={active ? "page" : undefined}
-                  className={`inline-flex items-center gap-2 rounded-control px-2.5 py-2 text-sm font-semibold transition sm:px-3 ${
+                  className={`inline-flex items-center gap-2 rounded-control px-2.5 py-1.5 text-xs transition sm:px-3.5 ${
                     active
-                      ? "bg-surface-muted text-ink"
-                      : "text-ink-muted hover:text-ink"
+                      ? "bg-brand font-bold text-white shadow-e1"
+                      : "font-medium text-ink-muted hover:bg-surface hover:text-ink"
                   }`}
                 >
                   <Icon className="size-4" aria-hidden="true" />
@@ -78,10 +79,10 @@ export default function AppHeader() {
             href="/cart"
             aria-current={isActive("/cart") ? "page" : undefined}
             aria-label="Cart"
-            className={`inline-flex items-center gap-2 rounded-control px-3 py-2 text-sm font-semibold transition ${
+            className={`inline-flex items-center gap-2 rounded-control px-3 py-2 text-sm font-bold transition ${
               isActive("/cart")
                 ? "bg-surface-muted text-ink"
-                : "text-ink-muted hover:text-ink"
+                : "text-ink-muted hover:bg-surface-muted hover:text-ink"
             }`}
           >
             <ShoppingBag className="size-4" aria-hidden="true" />
@@ -108,7 +109,7 @@ export default function AppHeader() {
             ) : (
               <Link
                 href="/login"
-                className={buttonClasses({ variant: "secondary", size: "sm" })}
+                className={buttonClasses({ variant: "primary", size: "sm" })}
               >
                 Sign in
               </Link>

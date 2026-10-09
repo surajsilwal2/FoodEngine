@@ -14,7 +14,8 @@ export default function Home() {
     return (
       <main className="flex flex-1 items-center justify-center bg-canvas px-5 py-16">
         <div className="w-full max-w-2xl">
-          <Skeleton className="h-10 w-3/4" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="mt-3 h-10 w-3/4" />
           <Skeleton className="mt-4 h-5 w-full" />
           <Skeleton className="mt-8 h-11 w-48" />
         </div>
@@ -25,7 +26,10 @@ export default function Home() {
   return (
     <main className="flex flex-1 items-center justify-center bg-canvas px-5 py-16 sm:px-8">
       <section className="w-full max-w-2xl">
-        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+        <p className="text-xs font-bold uppercase tracking-wide text-brand">
+          FoodEngine
+        </p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
           {isAuthenticated
             ? `Welcome back, ${user?.name}.`
             : "Good food starts here."}
@@ -61,7 +65,7 @@ export default function Home() {
           Own a restaurant?{" "}
           <Link
             href="/merchant-application"
-            className="font-semibold text-brand hover:underline"
+            className="font-bold text-brand hover:underline"
           >
             Sell with us
           </Link>
