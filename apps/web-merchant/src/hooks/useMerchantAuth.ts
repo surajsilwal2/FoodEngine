@@ -8,6 +8,7 @@ import { useEffect } from "react";
 
 export interface MerchantAuthResponse {
   accessToken: string;
+  refreshToken?: string;
   user: { id: number; name: string; email: string };
 }
 
@@ -40,7 +41,7 @@ export function useLogin() {
     mutationFn: async (payload: LoginPayload) =>
       (await api.post<MerchantAuthResponse>("/auth/login", payload)).data,
     onSuccess: (data) => {
-      setSession(data.accessToken, data.user);
+      setSession(data.accessToken, data.user, data.refreshToken);
       router.replace(postLoginPath());
     },
   });
@@ -58,7 +59,7 @@ export function useRegister() {
     mutationFn: async (payload: RegisterPayload) =>
       (await api.post<MerchantAuthResponse>("/auth/register", payload)).data,
     onSuccess: (data) => {
-      setSession(data.accessToken, data.user);
+      setSession(data.accessToken, data.user, data.refreshToken);
       router.replace(postLoginPath());
     },
   });

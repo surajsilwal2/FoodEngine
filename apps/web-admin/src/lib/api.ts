@@ -15,9 +15,11 @@ type RetriableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
 let refreshRequest: Promise<string> | null = null;
 
+// No `withCredentials`: the admin app authenticates with its own bearer token,
+// and the host-wide refresh cookie is shared with the customer, merchant and
+// driver apps.
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -55,11 +57,9 @@ api.interceptors.response.use(
     if (!refreshRequest) {
       const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
       refreshRequest = axios
-        .post<RefreshResponse>(
-          `${API_BASE_URL}/auth/refresh`,
-          { refreshToken: storedRefreshToken || undefined },
-          { withCredentials: true },
-        )
+        .post<RefreshResponse>(`${API_BASE_URL}/auth/refresh`, {
+          refreshToken: storedRefreshToken || undefined,
+        })
         .then(({ data }) => {
           localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
           if (data.refreshToken) {

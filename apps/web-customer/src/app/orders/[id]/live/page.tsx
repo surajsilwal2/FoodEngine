@@ -88,7 +88,8 @@ export default function LiveOrderPage() {
   }
 
   const isCancelled =
-    order.status === "CANCELLED" || order.deliveryStatus === "CANCELLED";
+    order.status === "CANCELLED" || order.delivery?.status === "CANCELLED";
+  const isDelivered = order.status === "DELIVERED";
 
   const currentStepIndex = ORDER_STEPS.findIndex(
     (step) => step.key === order.status,
@@ -116,7 +117,7 @@ export default function LiveOrderPage() {
         </div>
 
         {/* Lead with the current confirmed stage in plain language. */}
-        {!isCancelled && currentStep && (
+        {!isCancelled && !isDelivered && currentStep && (
           <p className="mt-4 text-sm font-semibold text-brand">
             {STATUS_LABELS[order.status] ?? currentStep.label}
           </p>
@@ -171,6 +172,20 @@ export default function LiveOrderPage() {
           </div>
         ) : (
           <div className="mt-8 space-y-8">
+            {/* A finished delivery replaces the in-progress lead-in with a
+                confirmed outcome instead of looking stuck on the last step. */}
+            {isDelivered && (
+              <div className="rounded-card bg-success/10 p-6">
+                <div className="flex items-center gap-2 text-lg font-bold text-success">
+                  <CheckCircle2 className="size-5" aria-hidden="true" /> Order
+                  Delivered
+                </div>
+                <p className="mt-2 text-sm text-ink-muted">
+                  Your order from {order.restaurant.name} has been delivered.
+                </p>
+              </div>
+            )}
+
             {/* Ordered timeline. Completed / current / upcoming are distinguished
                 by fill, ring and weight — not colour alone. */}
             <ol className="relative space-y-6">
@@ -191,11 +206,13 @@ export default function LiveOrderPage() {
                     <span
                       aria-current={isCurrent ? "step" : undefined}
                       className={`relative z-10 grid size-9 shrink-0 place-items-center rounded-full ${
-                        isCurrent
-                          ? "bg-brand text-white ring-4 ring-brand-soft"
-                          : isPassed
-                            ? "bg-brand-soft text-brand"
-                            : "border border-line bg-surface text-ink-muted"
+                        isCurrent && isDelivered
+                          ? "bg-success text-white ring-4 ring-success/20"
+                          : isCurrent
+                            ? "bg-brand text-white ring-4 ring-brand-soft"
+                            : isPassed
+                              ? "bg-brand-soft text-brand"
+                              : "border border-line bg-surface text-ink-muted"
                       }`}
                     >
                       <Icon className="size-4" aria-hidden="true" />
@@ -211,7 +228,12 @@ export default function LiveOrderPage() {
                       >
                         {step.label}
                       </p>
-                      {isCurrent && (
+                      {isCurrent && isDelivered && (
+                        <p className="mt-0.5 text-xs font-semibold text-success">
+                          Completed
+                        </p>
+                      )}
+                      {isCurrent && !isDelivered && (
                         <p className="mt-0.5 text-xs font-semibold text-brand">
                           In progress…
                         </p>
